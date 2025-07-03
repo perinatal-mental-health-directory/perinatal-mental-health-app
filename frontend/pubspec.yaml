@@ -1,0 +1,71 @@
+name: perinatal_app
+description: A cross-platform mobile app for perinatal mental health support.
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  provider: ^6.1.1
+
+  # Routing
+  go_router: ^13.0.0
+
+  # HTTP Requests
+  http: ^1.2.1
+
+  # Local storage
+  shared_preferences: ^2.2.2
+
+  # SVG support
+  flutter_svg: ^2.0.7
+
+  # Icons and UI utilities
+  cupertino_icons: ^1.0.6
+  animated_text_kit: ^4.2.2
+  lottie: ^2.6.0
+
+dev_dependencies:
+  flutter_launcher_icons: ^0.13.1
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^3.0.1
+
+flutter:
+
+  uses-material-design: true
+
+  assets:
+    - assets/images/login_header.jpg
+    - assets/images/splash_bg.jpg
+    - assets/animations/mental_health.json
+    - assets/icons/app_icon.png
+    - assets/images/google_logo.png
+    - assets/images/nhs_logo.png
+    - assets/images/shield.png
+
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+
+    - family: RobotoSerif
+      fonts:
+        - asset: assets/fonts/RobotoSerif-Regular.ttf
+        - asset: assets/fonts/RobotoSerif-Bold.ttf
+          weight: 700
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/app_icon.png"
+
