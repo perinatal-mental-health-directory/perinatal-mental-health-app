@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'forgot_password.dart';
 import 'sign_up.dart';
+import '../dashboard/dashboard.dart';
 
 
 class LoginScreen extends StatelessWidget {
@@ -163,7 +164,12 @@ class LoginScreen extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const DashboardScreen()),
+                    );
+                  },
                   child: const Text(
                     "LOGIN",
                     style: TextStyle(
@@ -196,7 +202,12 @@ class LoginScreen extends StatelessWidget {
               SocialLogoButton(
                 imagePath: 'assets/images/google_logo.png',
                 label: "Login with Google",
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const DashboardScreen()),
+                  );
+                },
               ),
               const SizedBox(height: 12),
 
@@ -204,7 +215,12 @@ class LoginScreen extends StatelessWidget {
               SocialLogoButton(
                 imagePath: 'assets/images/nhs_logo.png',
                 label: "Login with NHS",
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const DashboardScreen()),
+                  );
+                },
               ),
 
               const SizedBox(height: 24),

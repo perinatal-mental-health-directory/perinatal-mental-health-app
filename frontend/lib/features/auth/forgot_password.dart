@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:perinatal_app/features/auth/login_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -128,7 +129,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               Center(
                 child: TextButton(
                   onPressed: () {
-                    Navigator.pop(context);
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => const LoginScreen()),
+                    );
                   },
                   style: TextButton.styleFrom(
                     foregroundColor: const Color(0xFF3A7BD5),
