@@ -1,0 +1,380 @@
+openapi: 3.0.3
+info:
+  title: Perinatal Mental Health App API
+  description: API documentation for the Perinatal Mental Health App
+  version: "1.0.0"
+servers:
+  - url: https://api.perinatalapp.org/v1
+paths:
+  /auth/login:
+    post:
+      summary: User login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        "200":
+          description: JWT token returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthToken'
+
+  /auth/register:
+    post:
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        "201":
+          description: User registered successfully
+
+  /auth/forgot-password:
+    post:
+      summary: Send password reset email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+      responses:
+        "200":
+          description: Password reset email sent
+
+  /auth/change-password:
+    post:
+      summary: Change password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                old_password:
+                  type: string
+                new_password:
+                  type: string
+      responses:
+        "200":
+          description: Password changed
+
+  /resources:
+    get:
+      summary: List and search resources
+      parameters:
+        - name: query
+          in: query
+          schema:
+            type: string
+        - name: tag
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of resources
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Resource'
+
+  /resources/{id}/download:
+    get:
+      summary: Download a resource
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Resource file
+
+  /journey:
+    get:
+      summary: Get user's journey stats
+      responses:
+        "200":
+          description: User journey overview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserJourney'
+
+  /services:
+    get:
+      summary: Search services
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: location
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of services
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Service'
+
+  /services/{id}:
+    get:
+      summary: Get service details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Service detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+
+  /referrals:
+    post:
+      summary: Submit a referral
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReferralRequest'
+      responses:
+        "201":
+          description: Referral submitted
+
+  /support-groups:
+    get:
+      summary: List support groups with filters
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of support groups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SupportGroup'
+
+  /notifications:
+    get:
+      summary: List notifications
+      parameters:
+        - name: unread
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Notification'
+
+  /notifications/clear:
+    post:
+      summary: Clear all notifications
+      responses:
+        "200":
+          description: Notifications cleared
+
+  /profile:
+    get:
+      summary: Get user profile
+      responses:
+        "200":
+          description: Profile details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+
+  /feedback:
+    post:
+      summary: Submit user feedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackRequest'
+      responses:
+        "201":
+          description: Feedback submitted
+
+components:
+  schemas:
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+
+    RegisterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+          enum: [Professional, NHS/Charity, Service User]
+
+    AuthToken:
+      type: object
+      properties:
+        token:
+          type: string
+
+    Resource:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        type:
+          type: string
+        verified_by_nhs:
+          type: boolean
+        expert_reviewed:
+          type: boolean
+        download_url:
+          type: string
+
+    UserJourney:
+      type: object
+      properties:
+        activity_graph:
+          type: array
+          items:
+            type: integer
+        services_completed:
+          type: integer
+        referrals_supported:
+          type: integer
+
+    Service:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        contact_email:
+          type: string
+        contact_phone:
+          type: string
+        location:
+          type: string
+        hours:
+          type: string
+        overview:
+          type: string
+        nhs_referral:
+          type: boolean
+        accepts_referrals:
+          type: boolean
+
+    ReferralRequest:
+      type: object
+      properties:
+        patient_name:
+          type: string
+        contact:
+          type: string
+        reason:
+          type: string
+        service_type:
+          type: string
+        is_urgent:
+          type: boolean
+
+    SupportGroup:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        category:
+          type: string
+        platform:
+          type: string
+        doctor_info:
+          type: string
+        guidelines:
+          type: string
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+        message:
+          type: string
+        timestamp:
+          type: string
+        is_new:
+          type: boolean
+
+    Profile:
+      type: object
+      properties:
+        email:
+          type: string
+        role:
+          type: string
+
+    FeedbackRequest:
+      type: object
+      properties:
+        anonymous:
+          type: boolean
+        rating:
+          type: string
+          enum: [Very Dissatisfied, Dissatisfied, Neutral, Satisfied, Very Satisfied]
+        feedback:
+          type: string
