@@ -246,8 +246,10 @@ components:
       properties:
         email:
           type: string
+          example: "abc@gmail.com"
         password:
           type: string
+          example: "acnkl89"
 
     RegisterRequest:
       type: object

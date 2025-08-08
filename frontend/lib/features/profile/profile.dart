@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:perinatal_app/features/auth/login_screen.dart';
+import 'package:perinatal_app/features/profile/privacy_settings.dart';
 import 'package:perinatal_app/features/profile/submit_feedback.dart';
 import 'package:provider/provider.dart';
 import '../../main.dart';
@@ -68,7 +69,12 @@ class ProfileScreen extends StatelessWidget {
                     _groupedProfileOption(
                       icon: Icons.privacy_tip_outlined,
                       text: 'Privacy & GDPR Settings',
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const PrivacySettingsScreen()),
+                        );
+                      },
                     ),
                   ],
                 ),
