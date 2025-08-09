@@ -952,5 +952,263 @@ class ApiService {
       return [];
     }
   }
+
+  // Add these methods to your existing ApiService class in frontend/lib/services/api_service.dart
+
+// Resources endpoints
+  static Future<Map<String, dynamic>> getResources({
+    int page = 1,
+    int pageSize = 20,
+    String? resourceType,
+    String? targetAudience,
+    String? search,
+    String? tags,
+    bool? featured,
+  }) async {
+    try {
+      // Build query parameters
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'page_size': pageSize.toString(),
+      };
+
+      if (resourceType != null && resourceType.isNotEmpty) {
+        queryParams['resource_type'] = resourceType;
+      }
+
+      if (targetAudience != null && targetAudience.isNotEmpty) {
+        queryParams['target_audience'] = targetAudience;
+      }
+
+      if (search != null && search.isNotEmpty) {
+        queryParams['search'] = search;
+      }
+
+      if (tags != null && tags.isNotEmpty) {
+        queryParams['tags'] = tags;
+      }
+
+      if (featured != null) {
+        queryParams['featured'] = featured.toString();
+      }
+
+      final uri = Uri.parse('$baseUrl/resources').replace(queryParameters: queryParams);
+
+      final response = await http.get(uri, headers: {'Content-Type': 'application/json'});
+
+      print('Get resources response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to get resources');
+      }
+    } catch (e) {
+      print('Get resources error: $e');
+      return {
+        'resources': [],
+        'total': 0,
+        'page': page,
+        'page_size': pageSize,
+        'total_pages': 0,
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> getResource(int resourceId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/resources/$resourceId'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      print('Get resource response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Resource not found');
+      }
+    } catch (e) {
+      print('Get resource error: $e');
+      throw Exception('Failed to get resource: $e');
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getFeaturedResources({int limit = 6}) async {
+    try {
+      final uri = Uri.parse('$baseUrl/resources/featured').replace(queryParameters: {
+        'limit': limit.toString(),
+      });
+
+      final response = await http.get(uri, headers: {'Content-Type': 'application/json'});
+
+      print('Get featured resources response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return List<Map<String, dynamic>>.from(data['resources'] ?? []);
+      } else {
+        throw Exception('Failed to get featured resources');
+      }
+    } catch (e) {
+      print('Get featured resources error: $e');
+      return [];
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getPopularResources({int limit = 10}) async {
+    try {
+      final uri = Uri.parse('$baseUrl/resources/popular').replace(queryParameters: {
+        'limit': limit.toString(),
+      });
+
+      final response = await http.get(uri, headers: {'Content-Type': 'application/json'});
+
+      print('Get popular resources response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return List<Map<String, dynamic>>.from(data['resources'] ?? []);
+      } else {
+        throw Exception('Failed to get popular resources');
+      }
+    } catch (e) {
+      print('Get popular resources error: $e');
+      return [];
+    }
+  }
+
+  static Future<Map<String, dynamic>> searchResources({
+    required String query,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/resources/search').replace(queryParameters: {
+        'q': query,
+        'page': page.toString(),
+        'page_size': pageSize.toString(),
+      });
+
+      final response = await http.get(uri, headers: {'Content-Type': 'application/json'});
+
+      print('Search resources response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to search resources');
+      }
+    } catch (e) {
+      print('Search resources error: $e');
+      return {
+        'resources': [],
+        'total': 0,
+        'page': page,
+        'page_size': pageSize,
+        'total_pages': 0,
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> getResourcesByTag({
+    required String tag,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/resources/by-tag').replace(queryParameters: {
+        'tag': tag,
+        'page': page.toString(),
+        'page_size': pageSize.toString(),
+      });
+
+      final response = await http.get(uri, headers: {'Content-Type': 'application/json'});
+
+      print('Get resources by tag response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to get resources by tag');
+      }
+    } catch (e) {
+      print('Get resources by tag error: $e');
+      return {
+        'resources': [],
+        'total': 0,
+        'page': page,
+        'page_size': pageSize,
+        'total_pages': 0,
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> getResourcesByAudience({
+    required String audience,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/resources/by-audience').replace(queryParameters: {
+        'audience': audience,
+        'page': page.toString(),
+        'page_size': pageSize.toString(),
+      });
+
+      final response = await http.get(uri, headers: {'Content-Type': 'application/json'});
+
+      print('Get resources by audience response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to get resources by audience');
+      }
+    } catch (e) {
+      print('Get resources by audience error: $e');
+      return {
+        'resources': [],
+        'total': 0,
+        'page': page,
+        'page_size': pageSize,
+        'total_pages': 0,
+      };
+    }
+  }
+
+  static Future<void> incrementResourceViewCount(int resourceId) async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/resources/$resourceId/view'),
+        headers: headers,
+      );
+
+      print('Increment view count response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return;
+      } else if (response.statusCode == 401) {
+        // Try to refresh token
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.post(
+          Uri.parse('$baseUrl/resources/$resourceId/view'),
+          headers: newHeaders,
+        );
+
+        if (retryResponse.statusCode != 200) {
+          throw Exception('Failed to increment view count');
+        }
+      } else {
+        throw Exception('Failed to increment view count');
+      }
+    } catch (e) {
+      print('Increment view count error: $e');
+      // Don't throw error for view count as it's not critical
+    }
+  }
 }
 
