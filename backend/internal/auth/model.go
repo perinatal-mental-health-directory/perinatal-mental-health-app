@@ -12,10 +12,13 @@ type LoginRequest struct {
 
 // RegisterRequest represents the registration request payload
 type RegisterRequest struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,min=8"`
-	FullName string `json:"full_name" validate:"required,min=2,max=100"`
-	Role     string `json:"role" validate:"required"`
+	Email       string  `json:"email" validate:"required,email"`
+	Password    string  `json:"password" validate:"required,min=8"`
+	FullName    string  `json:"full_name" validate:"required,min=2,max=100"`
+	Role        string  `json:"role" validate:"required"`
+	PhoneNumber *string `json:"phone_number,omitempty"`
+	Address     *string `json:"address,omitempty"`
+	DateOfBirth *string `json:"date_of_birth,omitempty"` // Expected format: YYYY-MM-DD
 }
 
 // AuthResponse represents the authentication response
@@ -61,6 +64,11 @@ type User struct {
 	LastLoginAt  *time.Time `json:"last_login_at,omitempty" db:"last_login_at"`
 	CreatedAt    time.Time  `json:"created_at" db:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at" db:"updated_at"`
+}
+
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password" validate:"required"`
+	NewPassword     string `json:"new_password" validate:"required,min=8"`
 }
 
 // UserRole represents user roles

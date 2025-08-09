@@ -114,3 +114,39 @@ func (h *handler) ResetPassword(c echo.Context) error {
 		"message": "Password reset successfully",
 	})
 }
+
+// ChangePassword changes a user's password
+func (h *handler) ChangePassword(c echo.Context) error {
+	var req ChangePasswordRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "Invalid request format",
+		})
+	}
+
+	// Get user ID from JWT context
+	userID := c.Get("user_id")
+	if userID == nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "User not authenticated",
+		})
+	}
+
+	userIDStr, ok := userID.(string)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "Invalid user ID",
+		})
+	}
+
+	err := h.service.ChangePassword(c.Request().Context(), userIDStr, &req)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"message": "Password changed successfully",
+	})
+}

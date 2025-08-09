@@ -51,6 +51,7 @@ func Register(e *echo.Echo, db *pgxpool.Pool, cfg *config.Config) {
 	users.GET("/:id/profile", userHandler.GetUserProfile)
 	users.PUT("/:id", userHandler.UpdateUser, custommiddleware.RoleMiddleware("nhs_staff", "professional"))
 	users.DELETE("/:id", userHandler.DeactivateUser, custommiddleware.RoleMiddleware("nhs_staff", "professional"))
+	v1.POST("/auth/change-password", authHandler.ChangePassword, custommiddleware.JWTMiddleware(jwtService))
 
 	// Current user routes (require authentication)
 	me := v1.Group("/me")
@@ -72,7 +73,7 @@ func Register(e *echo.Echo, db *pgxpool.Pool, cfg *config.Config) {
 	// Featured services endpoint
 	v1.GET("/services/featured", func(c echo.Context) error {
 		// Get limit from query param, default to 6
-		limit := 6
+		limit := 3
 		if l := c.QueryParam("limit"); l != "" {
 			if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 20 {
 				limit = parsed

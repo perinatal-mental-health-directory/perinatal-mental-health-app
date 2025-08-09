@@ -393,17 +393,21 @@ func (s *Store) DeactivateServiceByUUID(ctx context.Context, serviceID string) e
 }
 
 // SearchServices searches services by name or description
+// SearchServices searches services by name, description, provider_name, or service_type
 func (s *Store) SearchServices(ctx context.Context, query string, page, pageSize int) (*ListServicesResponse, error) {
 	offset := (page - 1) * pageSize
 
 	searchQuery := "%" + strings.ToLower(query) + "%"
 
-	// Count total matching services
+	// Count total matching services - Updated to include service_type
 	countSQL := `
 		SELECT COUNT(*) 
 		FROM services 
 		WHERE is_active = true 
-		AND (LOWER(name) LIKE $1 OR LOWER(description) LIKE $1 OR LOWER(provider_name) LIKE $1)
+		AND (LOWER(name) LIKE $1 
+		     OR LOWER(description) LIKE $1 
+		     OR LOWER(provider_name) LIKE $1 
+		     OR LOWER(service_type) LIKE $1)
 	`
 
 	var total int64
@@ -412,19 +416,23 @@ func (s *Store) SearchServices(ctx context.Context, query string, page, pageSize
 		return nil, fmt.Errorf("failed to count search results: %w", err)
 	}
 
-	// Get matching services
+	// Get matching services - Updated to include service_type in search and ordering
 	searchSQL := `
 		SELECT id, name, description, provider_name, contact_email, contact_phone, 
 			   website_url, address, service_type, availability_hours, eligibility_criteria,
 			   is_active, created_at, updated_at
 		FROM services
 		WHERE is_active = true 
-		AND (LOWER(name) LIKE $1 OR LOWER(description) LIKE $1 OR LOWER(provider_name) LIKE $1)
+		AND (LOWER(name) LIKE $1 
+		     OR LOWER(description) LIKE $1 
+		     OR LOWER(provider_name) LIKE $1 
+		     OR LOWER(service_type) LIKE $1)
 		ORDER BY 
 			CASE 
 				WHEN LOWER(name) LIKE $1 THEN 1 
-				WHEN LOWER(provider_name) LIKE $1 THEN 2 
-				ELSE 3 
+				WHEN LOWER(service_type) LIKE $1 THEN 2 
+				WHEN LOWER(provider_name) LIKE $1 THEN 3 
+				ELSE 4 
 			END,
 			created_at DESC
 		LIMIT $2 OFFSET $3

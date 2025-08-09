@@ -129,3 +129,90 @@ func (s *store) UpdatePassword(ctx context.Context, userID, passwordHash string)
 	_, err := s.db.Exec(ctx, query, passwordHash, time.Now(), userID)
 	return err
 }
+
+// GetUserPasswordHash retrieves a user's password hash
+func (s *store) GetUserPasswordHash(ctx context.Context, userID string) (string, error) {
+	query := `
+		SELECT password_hash
+		FROM users 
+		WHERE id = $1 AND is_active = true
+	`
+
+	var passwordHash string
+	err := s.db.QueryRow(ctx, query, userID).Scan(&passwordHash)
+	if err != nil {
+		return "", err
+	}
+
+	return passwordHash, nil
+}
+
+// UpdateUserPassword updates a user's password
+func (s *store) UpdateUserPassword(ctx context.Context, userID, passwordHash string) error {
+	query := `
+		UPDATE users 
+		SET password_hash = $1, updated_at = $2
+		WHERE id = $3 AND is_active = true
+	`
+
+	_, err := s.db.Exec(ctx, query, passwordHash, time.Now(), userID)
+	return err
+}
+
+// Add this method to backend/internal/auth/store.go
+
+// CreateUserWithProfile creates a new user with profile information
+func (s *store) CreateUserWithProfile(ctx context.Context, user *User, phoneNumber, address *string, dateOfBirth *time.Time) error {
+	// Start a transaction
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Create user
+	userQuery := `
+		INSERT INTO users (id, email, full_name, role, password_hash, is_active, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`
+
+	_, err = tx.Exec(ctx, userQuery,
+		user.ID,
+		user.Email,
+		user.FullName,
+		user.Role,
+		user.PasswordHash,
+		user.IsActive,
+		user.CreatedAt,
+		user.UpdatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create user: %w", err)
+	}
+
+	// Create user profile with additional information
+	profileQuery := `
+		INSERT INTO user_profiles (user_id, phone_number, address, date_of_birth, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`
+
+	_, err = tx.Exec(ctx, profileQuery,
+		user.ID,
+		phoneNumber,
+		address,
+		dateOfBirth,
+		user.CreatedAt,
+		user.UpdatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create user profile: %w", err)
+	}
+
+	// Commit transaction
+	err = tx.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
