@@ -11,6 +11,7 @@ import (
 	custommiddleware "github.com/perinatal-mental-health-app/backend/internal/middleware"
 	"github.com/perinatal-mental-health-app/backend/internal/privacy"
 	"github.com/perinatal-mental-health-app/backend/internal/referrals"
+	"github.com/perinatal-mental-health-app/backend/internal/resources"
 	"github.com/perinatal-mental-health-app/backend/internal/services"
 	"github.com/perinatal-mental-health-app/backend/internal/user"
 	"net/http"
@@ -117,6 +118,35 @@ func Register(e *echo.Echo, db *pgxpool.Pool, cfg *config.Config) {
 	adminServices.DELETE("/:id", servicesHandler.DeleteService)
 	adminServices.GET("/stats", servicesHandler.GetServiceStats)
 
+	// --- Resources ---
+	resourcesStore := resources.NewStore(db)
+	resourcesService := resources.NewService(resourcesStore)
+	resourcesHandler := resources.NewHandler(resourcesService)
+
+	// Public resource routes
+	v1.GET("/resources", resourcesHandler.ListResources)
+	v1.GET("/resources/search", resourcesHandler.SearchResources)
+	v1.GET("/resources/:id", resourcesHandler.GetResource)
+	v1.GET("/resources/featured", resourcesHandler.GetFeaturedResources)
+	v1.GET("/resources/popular", resourcesHandler.GetPopularResources)
+	v1.GET("/resources/by-tag", resourcesHandler.GetResourcesByTag)
+	v1.GET("/resources/by-audience", resourcesHandler.GetResourcesByAudience)
+
+	// Resource interaction routes (require authentication for tracking)
+	resourcesAuth := v1.Group("/resources")
+	resourcesAuth.Use(custommiddleware.OptionalJWTMiddleware(jwtService))
+	resourcesAuth.POST("/:id/view", resourcesHandler.IncrementViewCount)
+
+	// Admin routes for resources (require staff/professional role)
+	adminResources := v1.Group("/admin/resources")
+	adminResources.Use(custommiddleware.JWTMiddleware(jwtService))
+	adminResources.Use(custommiddleware.RoleMiddleware("nhs_staff", "professional"))
+	adminResources.POST("", resourcesHandler.CreateResource)
+	adminResources.PUT("/:id", resourcesHandler.UpdateResource)
+	adminResources.DELETE("/:id", resourcesHandler.DeleteResource)
+	adminResources.POST("/:id/toggle-featured", resourcesHandler.ToggleResourceFeatured)
+	adminResources.GET("/stats", resourcesHandler.GetResourceStats)
+
 	// --- Referrals ---
 	referralsStore := referrals.NewStore(db)
 	referralsService := referrals.NewService(referralsStore)
@@ -160,13 +190,6 @@ func Register(e *echo.Echo, db *pgxpool.Pool, cfg *config.Config) {
 	// groupsGroup.Use(custommiddleware.JWTMiddleware(jwtService))
 	// groupsGroup.GET("", groupHandler.List)
 	// groupsGroup.POST("/:id/join", groupHandler.Join)
-
-	// --- Resources ---
-	// resourceHandler := resource.NewHandler(...)
-	// resourcesGroup := v1.Group("/resources")
-	// resourcesGroup.Use(custommiddleware.OptionalJWTMiddleware(jwtService))
-	// resourcesGroup.GET("", resourceHandler.List)
-	// resourcesGroup.GET("/:id", resourceHandler.GetByID)
 
 	// --- Notifications ---
 	// notificationHandler := notification.NewHandler(...)
