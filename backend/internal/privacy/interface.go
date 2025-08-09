@@ -1,4 +1,4 @@
-// Create: backend/internal/privacy/interface.go
+// backend/internal/privacy/interface.go
 package privacy
 
 import (
@@ -7,7 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// service defines the interface for privacy business logic
+// Service defines the interface for privacy business logic
 type Service interface {
 	GetPrivacyPreferences(ctx context.Context, userID string) (*PrivacyPreferences, error)
 	UpdatePrivacyPreferences(ctx context.Context, userID string, req *UpdatePrivacyPreferencesRequest) error
@@ -15,18 +15,22 @@ type Service interface {
 	RequestAccountDeletion(ctx context.Context, userID, reason string) error
 	GetDataRetentionInfo() *DataRetentionInfo
 	ExportUserData(ctx context.Context, userID string) (*DataExportResponse, error)
+	GetDataRequests(ctx context.Context, userID string) ([]DataRequest, error)
 }
 
-// store defines the interface for privacy data persistence
+// Store defines the interface for privacy data persistence
 type Store interface {
 	GetPrivacyPreferences(ctx context.Context, userID string) (*PrivacyPreferences, error)
 	CreatePrivacyPreferences(ctx context.Context, preferences *PrivacyPreferences) error
 	UpdatePrivacyPreferences(ctx context.Context, userID string, req *UpdatePrivacyPreferencesRequest) error
 	GetUserData(ctx context.Context, userID string) (map[string]interface{}, error)
 	GetUserProfileData(ctx context.Context, userID string) (map[string]interface{}, error)
+	CreateDataRequest(ctx context.Context, request *DataRequest) error
+	GetDataRequestsByUser(ctx context.Context, userID string) ([]DataRequest, error)
+	UpdateDataRequestStatus(ctx context.Context, requestID, status string, notes *string) error
 }
 
-// handler defines the interface for privacy HTTP handlers
+// Handler defines the interface for privacy HTTP handlers
 type Handler interface {
 	GetPrivacyPreferences(c echo.Context) error
 	UpdatePrivacyPreferences(c echo.Context) error
@@ -34,4 +38,5 @@ type Handler interface {
 	RequestAccountDeletion(c echo.Context) error
 	GetDataRetentionInfo(c echo.Context) error
 	ExportUserData(c echo.Context) error
+	GetDataRequests(c echo.Context) error
 }

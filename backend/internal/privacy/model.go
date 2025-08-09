@@ -1,3 +1,4 @@
+// backend/internal/privacy/model.go
 package privacy
 
 import (
@@ -25,6 +26,21 @@ type UpdatePrivacyPreferencesRequest struct {
 	AnalyticsEnabled       *bool `json:"analytics_enabled,omitempty"`
 }
 
+// DataRequest represents a GDPR data request
+type DataRequest struct {
+	ID          string     `json:"id" db:"id"`
+	UserID      string     `json:"user_id" db:"user_id"`
+	RequestType string     `json:"request_type" db:"request_type"`
+	Status      string     `json:"status" db:"status"`
+	Reason      *string    `json:"reason,omitempty" db:"reason"`
+	RequestedAt time.Time  `json:"requested_at" db:"requested_at"`
+	ProcessedAt *time.Time `json:"processed_at,omitempty" db:"processed_at"`
+	ProcessedBy *string    `json:"processed_by,omitempty" db:"processed_by"`
+	Notes       *string    `json:"notes,omitempty" db:"notes"`
+	CreatedAt   time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at" db:"updated_at"`
+}
+
 // DataRetentionInfo represents data retention information
 type DataRetentionInfo struct {
 	RetentionPolicy string `json:"retention_policy"`
@@ -44,3 +60,17 @@ type DataExportResponse struct {
 	Preferences interface{} `json:"preferences"`
 	ExportDate  time.Time   `json:"export_date"`
 }
+
+// RequestType constants
+const (
+	RequestTypeDataDownload    = "data_download"
+	RequestTypeAccountDeletion = "account_deletion"
+)
+
+// RequestStatus constants
+const (
+	StatusPending    = "pending"
+	StatusProcessing = "processing"
+	StatusCompleted  = "completed"
+	StatusRejected   = "rejected"
+)

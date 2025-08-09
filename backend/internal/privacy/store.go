@@ -1,3 +1,4 @@
+// backend/internal/privacy/store.go
 package privacy
 
 import (
@@ -14,7 +15,7 @@ type store struct {
 	db *pgxpool.Pool
 }
 
-func NewStore(db *pgxpool.Pool) *store {
+func NewStore(db *pgxpool.Pool) Store {
 	return &store{
 		db: db,
 	}
@@ -150,22 +151,34 @@ func (s *store) GetUserData(ctx context.Context, userID string) (map[string]inte
 		WHERE id = $1
 	`
 
-	var user map[string]interface{}
+	var id, email, fullName, role string
+	var isActive bool
 	var lastLoginAt *time.Time
+	var createdAt, updatedAt time.Time
 
 	err := s.db.QueryRow(ctx, query, userID).Scan(
-		&user["id"],
-		&user["email"],
-		&user["full_name"],
-		&user["role"],
-		&user["is_active"],
+		&id,
+		&email,
+		&fullName,
+		&role,
+		&isActive,
 		&lastLoginAt,
-		&user["created_at"],
-		&user["updated_at"],
+		&createdAt,
+		&updatedAt,
 	)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user data: %w", err)
+	}
+
+	user := map[string]interface{}{
+		"id":         id,
+		"email":      email,
+		"full_name":  fullName,
+		"role":       role,
+		"is_active":  isActive,
+		"created_at": createdAt,
+		"updated_at": updatedAt,
 	}
 
 	if lastLoginAt != nil {
@@ -184,19 +197,20 @@ func (s *store) GetUserProfileData(ctx context.Context, userID string) (map[stri
 		WHERE user_id = $1
 	`
 
-	profile := make(map[string]interface{})
+	var profileUserID string
 	var phoneNumber, address, emergencyContact, preferences *string
 	var dateOfBirth *time.Time
+	var createdAt, updatedAt time.Time
 
 	err := s.db.QueryRow(ctx, query, userID).Scan(
-		&profile["user_id"],
+		&profileUserID,
 		&phoneNumber,
 		&dateOfBirth,
 		&address,
 		&emergencyContact,
 		&preferences,
-		&profile["created_at"],
-		&profile["updated_at"],
+		&createdAt,
+		&updatedAt,
 	)
 
 	if err != nil {
@@ -204,6 +218,12 @@ func (s *store) GetUserProfileData(ctx context.Context, userID string) (map[stri
 			return map[string]interface{}{"user_id": userID}, nil
 		}
 		return nil, fmt.Errorf("failed to get user profile data: %w", err)
+	}
+
+	profile := map[string]interface{}{
+		"user_id":    profileUserID,
+		"created_at": createdAt,
+		"updated_at": updatedAt,
 	}
 
 	if phoneNumber != nil {
@@ -223,4 +243,94 @@ func (s *store) GetUserProfileData(ctx context.Context, userID string) (map[stri
 	}
 
 	return profile, nil
+}
+
+// CreateDataRequest creates a new data request
+func (s *store) CreateDataRequest(ctx context.Context, request *DataRequest) error {
+	query := `
+		INSERT INTO data_requests (id, user_id, request_type, status, reason, requested_at, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`
+
+	_, err := s.db.Exec(ctx, query,
+		request.ID,
+		request.UserID,
+		request.RequestType,
+		request.Status,
+		request.Reason,
+		request.RequestedAt,
+		request.CreatedAt,
+		request.UpdatedAt,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to create data request: %w", err)
+	}
+
+	return nil
+}
+
+// GetDataRequestsByUser retrieves all data requests for a user
+func (s *store) GetDataRequestsByUser(ctx context.Context, userID string) ([]DataRequest, error) {
+	query := `
+		SELECT id, user_id, request_type, status, reason, requested_at, processed_at, 
+			   processed_by, notes, created_at, updated_at
+		FROM data_requests
+		WHERE user_id = $1
+		ORDER BY requested_at DESC
+	`
+
+	rows, err := s.db.Query(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get data requests: %w", err)
+	}
+	defer rows.Close()
+
+	var requests []DataRequest
+	for rows.Next() {
+		var request DataRequest
+		err := rows.Scan(
+			&request.ID,
+			&request.UserID,
+			&request.RequestType,
+			&request.Status,
+			&request.Reason,
+			&request.RequestedAt,
+			&request.ProcessedAt,
+			&request.ProcessedBy,
+			&request.Notes,
+			&request.CreatedAt,
+			&request.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan data request: %w", err)
+		}
+		requests = append(requests, request)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return requests, nil
+}
+
+// UpdateDataRequestStatus updates the status of a data request
+func (s *store) UpdateDataRequestStatus(ctx context.Context, requestID, status string, notes *string) error {
+	query := `
+		UPDATE data_requests 
+		SET status = $1, notes = $2, updated_at = $3
+		WHERE id = $4
+	`
+
+	result, err := s.db.Exec(ctx, query, status, notes, time.Now(), requestID)
+	if err != nil {
+		return fmt.Errorf("failed to update data request status: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("data request not found")
+	}
+
+	return nil
 }

@@ -128,3 +128,48 @@ CREATE TRIGGER update_support_groups_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+
+-- Create privacy_preferences table
+CREATE TABLE privacy_preferences (
+                                     user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                                     data_tracking_enabled BOOLEAN DEFAULT true,
+                                     data_sharing_enabled BOOLEAN DEFAULT false,
+                                     cookies_enabled BOOLEAN DEFAULT true,
+                                     marketing_emails_enabled BOOLEAN DEFAULT false,
+                                     analytics_enabled BOOLEAN DEFAULT true,
+                                     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                                     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create data_requests table for tracking GDPR requests
+CREATE TABLE data_requests (
+                               id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                               user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                               request_type VARCHAR(50) NOT NULL CHECK (request_type IN ('data_download', 'account_deletion')),
+                               status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'rejected')),
+                               reason TEXT,
+                               requested_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                               processed_at TIMESTAMP WITH TIME ZONE,
+                               processed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+                               notes TEXT,
+                               created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                               updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for better performance
+CREATE INDEX idx_privacy_preferences_user_id ON privacy_preferences(user_id);
+CREATE INDEX idx_data_requests_user_id ON data_requests(user_id);
+CREATE INDEX idx_data_requests_type ON data_requests(request_type);
+CREATE INDEX idx_data_requests_status ON data_requests(status);
+CREATE INDEX idx_data_requests_requested_at ON data_requests(requested_at);
+
+-- Create triggers to automatically update updated_at
+CREATE TRIGGER update_privacy_preferences_updated_at
+    BEFORE UPDATE ON privacy_preferences
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_data_requests_updated_at
+    BEFORE UPDATE ON data_requests
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
