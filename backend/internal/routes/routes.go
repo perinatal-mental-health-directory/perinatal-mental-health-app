@@ -1,3 +1,4 @@
+// backend/internal/routes/routes.go
 package routes
 
 import (
@@ -8,6 +9,7 @@ import (
 	"github.com/perinatal-mental-health-app/backend/internal/feedback"
 	"github.com/perinatal-mental-health-app/backend/internal/health"
 	custommiddleware "github.com/perinatal-mental-health-app/backend/internal/middleware"
+	"github.com/perinatal-mental-health-app/backend/internal/privacy"
 	"github.com/perinatal-mental-health-app/backend/internal/referrals"
 	"github.com/perinatal-mental-health-app/backend/internal/services"
 	"github.com/perinatal-mental-health-app/backend/internal/user"
@@ -60,6 +62,22 @@ func Register(e *echo.Echo, db *pgxpool.Pool, cfg *config.Config) {
 	me.PUT("", userHandler.UpdateCurrentUser)
 	me.POST("/last-login", userHandler.UpdateLastLogin)
 
+	// --- Privacy & GDPR ---
+	privacyStore := privacy.NewStore(db)
+	privacyService := privacy.NewService(privacyStore)
+	privacyHandler := privacy.NewHandler(privacyService)
+
+	// Privacy routes (require authentication)
+	privacyGroup := v1.Group("/privacy")
+	privacyGroup.Use(custommiddleware.JWTMiddleware(jwtService))
+	privacyGroup.GET("/preferences", privacyHandler.GetPrivacyPreferences)
+	privacyGroup.PUT("/preferences", privacyHandler.UpdatePrivacyPreferences)
+	privacyGroup.POST("/request-data-download", privacyHandler.RequestDataDownload)
+	privacyGroup.POST("/request-account-deletion", privacyHandler.RequestAccountDeletion)
+	privacyGroup.GET("/data-retention-info", privacyHandler.GetDataRetentionInfo)
+	privacyGroup.GET("/export-data", privacyHandler.ExportUserData)
+	privacyGroup.GET("/data-requests", privacyHandler.GetDataRequests)
+
 	// --- Services ---
 	servicesStore := services.NewStore(db)
 	servicesService := services.NewService(servicesStore)
@@ -67,7 +85,7 @@ func Register(e *echo.Echo, db *pgxpool.Pool, cfg *config.Config) {
 
 	// Public service routes
 	v1.GET("/services", servicesHandler.ListServices)
-	v1.GET("/services/search", servicesHandler.SearchServices) // Add this line
+	v1.GET("/services/search", servicesHandler.SearchServices)
 	v1.GET("/services/:id", servicesHandler.GetService)
 
 	// Featured services endpoint
@@ -97,7 +115,7 @@ func Register(e *echo.Echo, db *pgxpool.Pool, cfg *config.Config) {
 	adminServices.POST("", servicesHandler.CreateService)
 	adminServices.PUT("/:id", servicesHandler.UpdateService)
 	adminServices.DELETE("/:id", servicesHandler.DeleteService)
-	adminServices.GET("/stats", servicesHandler.GetServiceStats) // Add this line
+	adminServices.GET("/stats", servicesHandler.GetServiceStats)
 
 	// --- Referrals ---
 	referralsStore := referrals.NewStore(db)

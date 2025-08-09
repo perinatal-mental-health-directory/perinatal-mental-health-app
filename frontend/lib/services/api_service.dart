@@ -694,12 +694,16 @@ class ApiService {
 
   // Privacy Settings Endpoints
 
-  // Get user privacy preferences
+  // Add these methods to your existing ApiService class in frontend/lib/services/api_service.dart
+
+// Privacy Settings Endpoints
+
+// Get user privacy preferences
   static Future<Map<String, dynamic>> getPrivacyPreferences() async {
     try {
       final headers = await getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/me/privacy-preferences'),
+        Uri.parse('$baseUrl/privacy/preferences'),
         headers: headers,
       );
 
@@ -711,7 +715,7 @@ class ApiService {
         await refreshToken();
         final newHeaders = await getHeaders();
         final retryResponse = await http.get(
-          Uri.parse('$baseUrl/me/privacy-preferences'),
+          Uri.parse('$baseUrl/privacy/preferences'),
           headers: newHeaders,
         );
 
@@ -729,12 +733,12 @@ class ApiService {
     }
   }
 
-  // Update user privacy preferences
+// Update user privacy preferences
   static Future<void> updatePrivacyPreferences(Map<String, dynamic> preferences) async {
     try {
       final headers = await getHeaders();
       final response = await http.put(
-        Uri.parse('$baseUrl/me/privacy-preferences'),
+        Uri.parse('$baseUrl/privacy/preferences'),
         headers: headers,
         body: jsonEncode(preferences),
       );
@@ -747,13 +751,14 @@ class ApiService {
         await refreshToken();
         final newHeaders = await getHeaders();
         final retryResponse = await http.put(
-          Uri.parse('$baseUrl/me/privacy-preferences'),
+          Uri.parse('$baseUrl/privacy/preferences'),
           headers: newHeaders,
           body: jsonEncode(preferences),
         );
 
         if (retryResponse.statusCode != 200) {
-          throw Exception('Failed to update privacy preferences');
+          final errorData = jsonDecode(retryResponse.body);
+          throw Exception(errorData['error'] ?? 'Failed to update privacy preferences');
         }
       } else {
         final errorData = jsonDecode(response.body);
@@ -765,12 +770,12 @@ class ApiService {
     }
   }
 
-  // Request data download
+// Request data download
   static Future<void> requestDataDownload() async {
     try {
       final headers = await getHeaders();
       final response = await http.post(
-        Uri.parse('$baseUrl/me/request-data-download'),
+        Uri.parse('$baseUrl/privacy/request-data-download'),
         headers: headers,
       );
 
@@ -782,12 +787,13 @@ class ApiService {
         await refreshToken();
         final newHeaders = await getHeaders();
         final retryResponse = await http.post(
-          Uri.parse('$baseUrl/me/request-data-download'),
+          Uri.parse('$baseUrl/privacy/request-data-download'),
           headers: newHeaders,
         );
 
         if (retryResponse.statusCode != 200) {
-          throw Exception('Failed to request data download');
+          final errorData = jsonDecode(retryResponse.body);
+          throw Exception(errorData['error'] ?? 'Failed to request data download');
         }
       } else {
         final errorData = jsonDecode(response.body);
@@ -799,12 +805,12 @@ class ApiService {
     }
   }
 
-  // Request account deletion
+// Request account deletion
   static Future<void> requestAccountDeletion(String reason) async {
     try {
       final headers = await getHeaders();
       final response = await http.post(
-        Uri.parse('$baseUrl/me/request-account-deletion'),
+        Uri.parse('$baseUrl/privacy/request-account-deletion'),
         headers: headers,
         body: jsonEncode({'reason': reason}),
       );
@@ -817,13 +823,14 @@ class ApiService {
         await refreshToken();
         final newHeaders = await getHeaders();
         final retryResponse = await http.post(
-          Uri.parse('$baseUrl/me/request-account-deletion'),
+          Uri.parse('$baseUrl/privacy/request-account-deletion'),
           headers: newHeaders,
           body: jsonEncode({'reason': reason}),
         );
 
         if (retryResponse.statusCode != 200) {
-          throw Exception('Failed to request account deletion');
+          final errorData = jsonDecode(retryResponse.body);
+          throw Exception(errorData['error'] ?? 'Failed to request account deletion');
         }
       } else {
         final errorData = jsonDecode(response.body);
@@ -840,7 +847,7 @@ class ApiService {
     try {
       final headers = await getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/me/data-retention-info'),
+        Uri.parse('$baseUrl/privacy/data-retention-info'),
         headers: headers,
       );
 
@@ -852,7 +859,7 @@ class ApiService {
         await refreshToken();
         final newHeaders = await getHeaders();
         final retryResponse = await http.get(
-          Uri.parse('$baseUrl/me/data-retention-info'),
+          Uri.parse('$baseUrl/privacy/data-retention-info'),
           headers: newHeaders,
         );
 
@@ -871,12 +878,12 @@ class ApiService {
     }
   }
 
-  // Export user data
+// Export user data
   static Future<String> exportUserData() async {
     try {
       final headers = await getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/me/export-data'),
+        Uri.parse('$baseUrl/privacy/export-data'),
         headers: headers,
       );
 
@@ -889,7 +896,7 @@ class ApiService {
         await refreshToken();
         final newHeaders = await getHeaders();
         final retryResponse = await http.get(
-          Uri.parse('$baseUrl/me/export-data'),
+          Uri.parse('$baseUrl/privacy/export-data'),
           headers: newHeaders,
         );
 
@@ -906,6 +913,43 @@ class ApiService {
     } catch (e) {
       print('Export user data error: $e');
       throw Exception('Failed to export user data: $e');
+    }
+  }
+
+// Get user data requests
+  static Future<List<dynamic>> getDataRequests() async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/privacy/data-requests'),
+        headers: headers,
+      );
+
+      print('Get data requests response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['requests'] ?? [];
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.get(
+          Uri.parse('$baseUrl/privacy/data-requests'),
+          headers: newHeaders,
+        );
+
+        if (retryResponse.statusCode == 200) {
+          final data = jsonDecode(retryResponse.body);
+          return data['requests'] ?? [];
+        } else {
+          return [];
+        }
+      } else {
+        return [];
+      }
+    } catch (e) {
+      print('Get data requests error: $e');
+      return [];
     }
   }
 }

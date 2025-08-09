@@ -1,3 +1,4 @@
+// backend/internal/privacy/handler.go
 package privacy
 
 import (
@@ -7,10 +8,10 @@ import (
 )
 
 type handler struct {
-	service *service
+	service Service
 }
 
-func NewHandler(service *service) *handler {
+func NewHandler(service Service) Handler {
 	return &handler{
 		service: service,
 	}
@@ -80,7 +81,7 @@ func (h *handler) RequestDataDownload(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{
-		"message": "Data download request submitted successfully",
+		"message": "Data download request submitted successfully. You will receive an email when your data is ready for download.",
 	})
 }
 
@@ -108,7 +109,7 @@ func (h *handler) RequestAccountDeletion(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{
-		"message": "Account deletion request submitted successfully",
+		"message": "Account deletion request submitted successfully. Our team will review your request and contact you within 30 days.",
 	})
 }
 
@@ -135,6 +136,28 @@ func (h *handler) ExportUserData(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, data)
+}
+
+// GetDataRequests retrieves user's data requests
+func (h *handler) GetDataRequests(c echo.Context) error {
+	userID := getUserIDFromContext(c)
+	if userID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "User not authenticated",
+		})
+	}
+
+	requests, err := h.service.GetDataRequests(c.Request().Context(), userID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"requests": requests,
+		"total":    len(requests),
+	})
 }
 
 // Helper function to extract user ID from JWT context
