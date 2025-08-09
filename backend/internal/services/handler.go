@@ -17,7 +17,7 @@ func NewHandler(service *Service) *Handler {
 	}
 }
 
-// ListServices retrieves a paginated list of services
+// ListServices retrieves a paginated list of services with optional filters
 func (h *Handler) ListServices(c echo.Context) error {
 	// Parse query parameters
 	page := 1
@@ -36,9 +36,21 @@ func (h *Handler) ListServices(c echo.Context) error {
 
 	serviceType := c.QueryParam("service_type")
 	location := c.QueryParam("location")
-	nhsReferral := c.QueryParam("nhs_referral") == "true"
+	search := c.QueryParam("search")
 
-	services, err := h.service.ListServices(c.Request().Context(), page, pageSize, serviceType, location, nhsReferral)
+	// If search query is provided, use search functionality
+	if search != "" {
+		services, err := h.service.SearchServices(c.Request().Context(), search, page, pageSize)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{
+				"error": err.Error(),
+			})
+		}
+		return c.JSON(http.StatusOK, services)
+	}
+
+	// Regular list with filters
+	services, err := h.service.ListServices(c.Request().Context(), page, pageSize, serviceType, location, false)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": err.Error(),
@@ -66,6 +78,40 @@ func (h *Handler) GetService(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, service)
+}
+
+// SearchServices handles search requests
+func (h *Handler) SearchServices(c echo.Context) error {
+	query := c.QueryParam("q")
+	if query == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "Search query is required",
+		})
+	}
+
+	// Parse pagination parameters
+	page := 1
+	if p := c.QueryParam("page"); p != "" {
+		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+
+	pageSize := 20
+	if ps := c.QueryParam("page_size"); ps != "" {
+		if parsed, err := strconv.Atoi(ps); err == nil && parsed > 0 && parsed <= 100 {
+			pageSize = parsed
+		}
+	}
+
+	services, err := h.service.SearchServices(c.Request().Context(), query, page, pageSize)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, services)
 }
 
 // CreateService creates a new service (admin only)
@@ -144,6 +190,18 @@ func (h *Handler) DeleteService(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{
-		"message": "ServicesModel deactivated successfully",
+		"message": "Service deactivated successfully",
 	})
+}
+
+// GetServiceStats retrieves service statistics (admin only)
+func (h *Handler) GetServiceStats(c echo.Context) error {
+	stats, err := h.service.GetServiceStats(c.Request().Context())
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, stats)
 }

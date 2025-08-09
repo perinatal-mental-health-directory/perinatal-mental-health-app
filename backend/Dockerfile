@@ -1,17 +1,25 @@
-FROM golang:1.20-alpine AS builder
+FROM golang:1.23.4-alpine AS builder
+
+RUN apk add --no-cache git build-base
+
 WORKDIR /app
 
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN go build -o server ./cmd/server
+
+RUN go build -o server ./cmd/server/main.go
 
 FROM alpine:latest
+
 WORKDIR /root/
 
-COPY --from=builder /app/server ./server
-COPY internal/configs/config.go ./configs/config.yaml
+RUN apk --no-cache add ca-certificates
+
+COPY --from=builder /app/server .
 
 EXPOSE 8080
+
+# Start the server
 CMD ["./server"]
