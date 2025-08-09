@@ -73,6 +73,9 @@ func (s *service) Login(ctx context.Context, req *LoginRequest) (*AuthResponse, 
 }
 
 // Register creates a new user account
+// Update the Register method in backend/internal/auth/service.go
+
+// Register creates a new user account with profile information
 func (s *service) Register(ctx context.Context, req *RegisterRequest) (*AuthResponse, error) {
 	// Check if user already exists
 	existingUser, _ := s.store.GetUserByEmail(ctx, req.Email)
@@ -99,7 +102,15 @@ func (s *service) Register(ctx context.Context, req *RegisterRequest) (*AuthResp
 		UpdatedAt:    time.Now(),
 	}
 
-	err = s.store.CreateUser(ctx, user)
+	// Parse date of birth if provided
+	var dateOfBirth *time.Time
+	if req.DateOfBirth != nil && *req.DateOfBirth != "" {
+		if parsedDate, err := time.Parse("2006-01-02", *req.DateOfBirth); err == nil {
+			dateOfBirth = &parsedDate
+		}
+	}
+
+	err = s.store.CreateUserWithProfile(ctx, user, req.PhoneNumber, req.Address, dateOfBirth)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
@@ -207,6 +218,35 @@ func (s *service) ResetPassword(ctx context.Context, req *ResetPasswordRequest) 
 
 	// Update user's password
 	err = s.store.UpdatePassword(ctx, claims.UserID, string(hashedPassword))
+	if err != nil {
+		return fmt.Errorf("failed to update password: %w", err)
+	}
+
+	return nil
+}
+
+// ChangePassword changes a user's password
+func (s *service) ChangePassword(ctx context.Context, userID string, req *ChangePasswordRequest) error {
+	// Get current password hash
+	currentHash, err := s.store.GetUserPasswordHash(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("user not found")
+	}
+
+	// Verify current password
+	err = bcrypt.CompareHashAndPassword([]byte(currentHash), []byte(req.CurrentPassword))
+	if err != nil {
+		return fmt.Errorf("current password is incorrect")
+	}
+
+	// Hash the new password
+	newHash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash new password")
+	}
+
+	// Update password in database
+	err = s.store.UpdateUserPassword(ctx, userID, string(newHash))
 	if err != nil {
 		return fmt.Errorf("failed to update password: %w", err)
 	}

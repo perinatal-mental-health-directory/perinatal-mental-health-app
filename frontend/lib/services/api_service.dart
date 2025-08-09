@@ -46,6 +46,61 @@ class ApiService {
     }
   }
 
+  // Add this method to your ApiService class in frontend/lib/services/api_service.dart
+
+  // Enhanced registration with profile information
+  static Future<Map<String, dynamic>> registerWithProfile({
+    required String email,
+    required String fullName,
+    required String password,
+    required String role,
+    String? phoneNumber,
+    String? address,
+    DateTime? dateOfBirth,
+  }) async {
+    try {
+      final requestBody = {
+        'email': email,
+        'full_name': fullName,
+        'password': password,
+        'role': role,
+      };
+
+      // Add optional profile fields
+      if (phoneNumber != null && phoneNumber.isNotEmpty) {
+        requestBody['phone_number'] = phoneNumber;
+      }
+      if (address != null && address.isNotEmpty) {
+        requestBody['address'] = address;
+      }
+      if (dateOfBirth != null) {
+        requestBody['date_of_birth'] = dateOfBirth.toIso8601String().split('T')[0]; // YYYY-MM-DD format
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(requestBody),
+      );
+
+      print('Enhanced register response status: ${response.statusCode}');
+      print('Enhanced register response body: ${response.body}');
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        await _storage.write(key: 'token', value: data['token']);
+        await _storage.write(key: 'refresh_token', value: data['refresh_token']);
+        return data;
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Registration failed');
+      }
+    } catch (e) {
+      print('Enhanced register error: $e');
+      throw Exception('Registration failed: $e');
+    }
+  }
+
   static Future<Map<String, dynamic>> register(String email, String fullName, String password, String role) async {
     try {
       final response = await http.post(
@@ -440,6 +495,183 @@ class ApiService {
     }
   }
 
+  // Add these methods to your existing ApiService class in frontend/lib/services/api_service.dart
+
+  // Change password endpoint
+  static Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/change-password'),
+        headers: headers,
+        body: jsonEncode({
+          'current_password': currentPassword,
+          'new_password': newPassword,
+        }),
+      );
+
+      print('Change password response status: ${response.statusCode}');
+      print('Change password response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        return;
+      } else if (response.statusCode == 401) {
+        // Try to refresh token
+        await refreshToken();
+        // Retry the request
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.post(
+          Uri.parse('$baseUrl/auth/change-password'),
+          headers: newHeaders,
+          body: jsonEncode({
+            'current_password': currentPassword,
+            'new_password': newPassword,
+          }),
+        );
+
+        if (retryResponse.statusCode == 200) {
+          return;
+        } else {
+          final errorData = jsonDecode(retryResponse.body);
+          throw Exception(errorData['error'] ?? 'Failed to change password');
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to change password');
+      }
+    } catch (e) {
+      print('Change password error: $e');
+      throw Exception('Failed to change password: $e');
+    }
+  }
+
+  // Update user profile with extended information
+  static Future<Map<String, dynamic>> updateUserProfile({
+    String? fullName,
+    String? phoneNumber,
+    String? address,
+    String? emergencyContact,
+  }) async {
+    try {
+      final headers = await getHeaders();
+      final updateData = <String, dynamic>{};
+
+      if (fullName != null) updateData['full_name'] = fullName;
+      if (phoneNumber != null) updateData['phone_number'] = phoneNumber;
+      if (address != null) updateData['address'] = address;
+      if (emergencyContact != null) updateData['emergency_contact'] = emergencyContact;
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/me'),
+        headers: headers,
+        body: jsonEncode(updateData),
+      );
+
+      print('Update profile response status: ${response.statusCode}');
+      print('Update profile response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        // Try to refresh token
+        await refreshToken();
+        // Retry the request
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.put(
+          Uri.parse('$baseUrl/me'),
+          headers: newHeaders,
+          body: jsonEncode(updateData),
+        );
+
+        if (retryResponse.statusCode == 200) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          throw Exception('Failed to update profile');
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to update profile');
+      }
+    } catch (e) {
+      print('Update profile error: $e');
+      throw Exception('Failed to update profile: $e');
+    }
+  }
+
+  // Get user preferences/settings
+  static Future<Map<String, dynamic>> getUserPreferences() async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/me/preferences'),
+        headers: headers,
+      );
+
+      print('Get preferences response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.get(
+          Uri.parse('$baseUrl/me/preferences'),
+          headers: newHeaders,
+        );
+
+        if (retryResponse.statusCode == 200) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          return {}; // Return empty preferences if not found
+        }
+      } else {
+        return {}; // Return empty preferences if not found
+      }
+    } catch (e) {
+      print('Get preferences error: $e');
+      return {}; // Return empty preferences on error
+    }
+  }
+
+  // Update user preferences
+  static Future<void> updateUserPreferences(Map<String, dynamic> preferences) async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.put(
+        Uri.parse('$baseUrl/me/preferences'),
+        headers: headers,
+        body: jsonEncode(preferences),
+      );
+
+      print('Update preferences response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return;
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.put(
+          Uri.parse('$baseUrl/me/preferences'),
+          headers: newHeaders,
+          body: jsonEncode(preferences),
+        );
+
+        if (retryResponse.statusCode != 200) {
+          throw Exception('Failed to update preferences');
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to update preferences');
+      }
+    } catch (e) {
+      print('Update preferences error: $e');
+      throw Exception('Failed to update preferences: $e');
+    }
+  }
+
   // Health check endpoint
   static Future<bool> checkServerHealth() async {
     try {
@@ -457,4 +689,224 @@ class ApiService {
       return false;
     }
   }
+
+  // Add these methods to your ApiService class in frontend/lib/services/api_service.dart
+
+  // Privacy Settings Endpoints
+
+  // Get user privacy preferences
+  static Future<Map<String, dynamic>> getPrivacyPreferences() async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/me/privacy-preferences'),
+        headers: headers,
+      );
+
+      print('Get privacy preferences response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.get(
+          Uri.parse('$baseUrl/me/privacy-preferences'),
+          headers: newHeaders,
+        );
+
+        if (retryResponse.statusCode == 200) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          return {}; // Return empty preferences if not found
+        }
+      } else {
+        return {}; // Return empty preferences if not found
+      }
+    } catch (e) {
+      print('Get privacy preferences error: $e');
+      return {}; // Return empty preferences on error
+    }
+  }
+
+  // Update user privacy preferences
+  static Future<void> updatePrivacyPreferences(Map<String, dynamic> preferences) async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.put(
+        Uri.parse('$baseUrl/me/privacy-preferences'),
+        headers: headers,
+        body: jsonEncode(preferences),
+      );
+
+      print('Update privacy preferences response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return;
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.put(
+          Uri.parse('$baseUrl/me/privacy-preferences'),
+          headers: newHeaders,
+          body: jsonEncode(preferences),
+        );
+
+        if (retryResponse.statusCode != 200) {
+          throw Exception('Failed to update privacy preferences');
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to update privacy preferences');
+      }
+    } catch (e) {
+      print('Update privacy preferences error: $e');
+      throw Exception('Failed to update privacy preferences: $e');
+    }
+  }
+
+  // Request data download
+  static Future<void> requestDataDownload() async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/me/request-data-download'),
+        headers: headers,
+      );
+
+      print('Request data download response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return;
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.post(
+          Uri.parse('$baseUrl/me/request-data-download'),
+          headers: newHeaders,
+        );
+
+        if (retryResponse.statusCode != 200) {
+          throw Exception('Failed to request data download');
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to request data download');
+      }
+    } catch (e) {
+      print('Request data download error: $e');
+      throw Exception('Failed to request data download: $e');
+    }
+  }
+
+  // Request account deletion
+  static Future<void> requestAccountDeletion(String reason) async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/me/request-account-deletion'),
+        headers: headers,
+        body: jsonEncode({'reason': reason}),
+      );
+
+      print('Request account deletion response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return;
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.post(
+          Uri.parse('$baseUrl/me/request-account-deletion'),
+          headers: newHeaders,
+          body: jsonEncode({'reason': reason}),
+        );
+
+        if (retryResponse.statusCode != 200) {
+          throw Exception('Failed to request account deletion');
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to request account deletion');
+      }
+    } catch (e) {
+      print('Request account deletion error: $e');
+      throw Exception('Failed to request account deletion: $e');
+    }
+  }
+
+  // Get data retention information
+  static Future<Map<String, dynamic>> getDataRetentionInfo() async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/me/data-retention-info'),
+        headers: headers,
+      );
+
+      print('Get data retention info response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.get(
+          Uri.parse('$baseUrl/me/data-retention-info'),
+          headers: newHeaders,
+        );
+
+        if (retryResponse.statusCode == 200) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          throw Exception('Failed to get data retention info');
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to get data retention info');
+      }
+    } catch (e) {
+      print('Get data retention info error: $e');
+      throw Exception('Failed to get data retention info: $e');
+    }
+  }
+
+  // Export user data
+  static Future<String> exportUserData() async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/me/export-data'),
+        headers: headers,
+      );
+
+      print('Export user data response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return jsonEncode(data); // Return as JSON string
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.get(
+          Uri.parse('$baseUrl/me/export-data'),
+          headers: newHeaders,
+        );
+
+        if (retryResponse.statusCode == 200) {
+          final data = jsonDecode(retryResponse.body);
+          return jsonEncode(data);
+        } else {
+          throw Exception('Failed to export user data');
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to export user data');
+      }
+    } catch (e) {
+      print('Export user data error: $e');
+      throw Exception('Failed to export user data: $e');
+    }
+  }
 }
+

@@ -1,116 +1,214 @@
+// frontend/lib/features/profile/profile.dart
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:perinatal_app/features/auth/login_screen.dart';
 import 'package:perinatal_app/features/profile/privacy_settings.dart';
 import 'package:perinatal_app/features/profile/submit_feedback.dart';
+import 'package:perinatal_app/features/profile/edit_profile.dart';
 import 'package:provider/provider.dart';
 import '../../main.dart';
+import '../../providers/auth_provider.dart';
+import 'profile_provider.dart';
 import 'change_password.dart';
 
 const kPrimaryBlue = Color(0xFF3A7BD5);
 const kDarkGreyText = Color(0xFF424242);
 const kLightGrey = Color(0xFFF6F6F6);
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final navProvider = Provider.of<NavigationProvider>(context);
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
 
+class _ProfileScreenState extends State<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Load profile data when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProfileProvider>().loadUserProfile();
+    });
+  }
+
+  void _handleLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: const Text("Confirm Logout"),
+        content: const Text("Are you sure you want to logout?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            style: TextButton.styleFrom(foregroundColor: kPrimaryBlue),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: kPrimaryBlue),
+            child: const Text("Logout"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await context.read<AuthProvider>().logout();
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+              (route) => false,
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: _buildAppBar(context),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _profileHeader(),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 6,
-                      offset: Offset(0, 2),
+      body: Consumer<ProfileProvider>(
+        builder: (context, profileProvider, child) {
+          if (profileProvider.isLoading && profileProvider.userProfile == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (profileProvider.error != null && profileProvider.userProfile == null) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Failed to load profile',
+                    style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    profileProvider.error!,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey[500]),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => profileProvider.loadUserProfile(),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: () => profileProvider.loadUserProfile(),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _profileHeader(profileProvider),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: Column(
+                        children: [
+                          _groupedProfileOption(
+                            icon: Icons.edit,
+                            text: 'Edit Profile',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => EditProfileScreen(
+                                    currentProfile: profileProvider.userProfile,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          Divider(height: 1, color: Colors.grey.shade300),
+                          _groupedProfileOption(
+                            icon: Icons.vpn_key,
+                            text: 'Change Password',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
+                              );
+                            },
+                          ),
+                          Divider(height: 1, color: Colors.grey.shade300),
+                          _groupedProfileOption(
+                            icon: Icons.chat_bubble_outline,
+                            text: 'Submit Feedback',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const SubmitFeedbackScreen()),
+                              );
+                            },
+                          ),
+                          Divider(height: 1, color: Colors.grey.shade300),
+                          _groupedProfileOption(
+                            icon: Icons.privacy_tip_outlined,
+                            text: 'Privacy & GDPR Settings',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const PrivacySettingsScreen()),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                  border: Border.all(color: Colors.grey.shade200), // Optional border
-                ),
-                child: Column(
-                  children: [
-                    _groupedProfileOption(
-                      icon: Icons.vpn_key,
-                      text: 'Change Password',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
-                        );
-                      },
+                  ),
+                  const SizedBox(height: 24),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: ElevatedButton.icon(
+                      onPressed: _handleLogout,
+                      icon: const Icon(Icons.logout, color: Colors.white),
+                      label: const Text(
+                        'Logout',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 17,
+                          color: Colors.white,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey[700],
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
                     ),
-                    Divider(height: 1, color: Colors.grey.shade300),
-                    _groupedProfileOption(
-                      icon: Icons.chat_bubble_outline,
-                      text: 'Submit Feedback',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const SubmitFeedbackScreen()),
-                        );
-                      },
-                    ),
-                    Divider(height: 1, color: Colors.grey.shade300),
-                    _groupedProfileOption(
-                      icon: Icons.privacy_tip_outlined,
-                      text: 'Privacy & GDPR Settings',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const PrivacySettingsScreen()),
-                        );
-                      },
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
               ),
             ),
-            const SizedBox(height: 24),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const LoginScreen()),
-                  );
-                },
-                icon: const Icon(Icons.logout, color: Colors.white),
-                label: const Text(
-                  'Logout',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 17,
-                    color: Colors.white,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey[700],
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -134,7 +232,11 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _profileHeader() {
+  Widget _profileHeader(ProfileProvider profileProvider) {
+    final userName = profileProvider.getUserFullName();
+    final userEmail = profileProvider.getUserEmail();
+    final userRole = profileProvider.getUserRoleDisplayName();
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16),
       child: Container(
@@ -145,28 +247,28 @@ class ProfileScreen extends StatelessWidget {
         ),
         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
         child: Column(
-          children: const [
-            CircleAvatar(
+          children: [
+            const CircleAvatar(
               radius: 35,
               backgroundColor: Colors.white,
               child: Icon(Icons.person, size: 36, color: kPrimaryBlue),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Text(
-              'Jane',
-              style: TextStyle(
+              userName,
+              style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
                 color: Colors.white,
               ),
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Text(
-              'jane.@nhs.net',
-              style: TextStyle(color: Colors.white),
+              userEmail,
+              style: const TextStyle(color: Colors.white),
             ),
-            SizedBox(height: 10),
-            _StaffBadge()
+            const SizedBox(height: 10),
+            _StaffBadge(role: userRole),
           ],
         ),
       ),
@@ -203,87 +305,12 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
-
-  Widget _bottomNavBar(BuildContext context, NavigationProvider navProvider) {
-    final items = [
-      Icons.home,
-      Icons.menu_book,
-      FontAwesomeIcons.heartPulse,
-      Icons.group,
-    ];
-
-    final labels = ['Home', 'Resources', 'Services', 'Groups'];
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      decoration: const BoxDecoration(
-        color: kPrimaryBlue,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
-        ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: List.generate(items.length, (index) {
-            final isSelected = navProvider.currentIndex == index;
-
-            return GestureDetector(
-              onTap: () {
-                navProvider.updateIndex(index);
-                switch (index) {
-                  case 0:
-                    Navigator.pushReplacementNamed(context, '/dashboard');
-                    break;
-                  case 1:
-                  // Navigate to Resources
-                    break;
-                  case 2:
-                    Navigator.pushNamed(context, '/services');
-                    break;
-                  case 3:
-                  // Navigate to Groups
-                    break;
-                }
-              },
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    items[index],
-                    size: 28,
-                    color: isSelected
-                        ? Colors.white
-                        : Colors.white.withOpacity(0.6),
-                  ),
-                  const SizedBox(height: 4),
-                  AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 200),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isSelected
-                          ? Colors.white
-                          : Colors.white.withOpacity(0.6),
-                      fontWeight:
-                      isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                    child: Text(labels[index]),
-                  ),
-                ],
-              ),
-            );
-          }),
-        ),
-      ),
-    );
-  }
 }
 
 class _StaffBadge extends StatelessWidget {
-  const _StaffBadge();
+  final String role;
+
+  const _StaffBadge({required this.role});
 
   @override
   Widget build(BuildContext context) {
@@ -293,9 +320,9 @@ class _StaffBadge extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: const Text(
-        'Parent',
-        style: TextStyle(
+      child: Text(
+        role,
+        style: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.bold,
           color: kPrimaryBlue,

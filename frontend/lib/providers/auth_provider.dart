@@ -115,6 +115,68 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  // Add this method to your existing AuthProvider class in frontend/lib/providers/auth_provider.dart
+
+  // Enhanced register method with profile information
+  Future<bool> registerWithProfile({
+    required String email,
+    required String fullName,
+    required String password,
+    required String role,
+    String? phoneNumber,
+    String? address,
+    DateTime? dateOfBirth,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      // Map frontend roles to backend roles
+      String backendRole;
+      switch (role.toLowerCase()) {
+        case 'professional':
+          backendRole = 'professional';
+          break;
+        case 'nhs staff':
+          backendRole = 'nhs_staff';
+          break;
+        case 'parent':
+          backendRole = 'service_user';
+          break;
+        default:
+          backendRole = 'service_user';
+      }
+
+      final response = await ApiService.registerWithProfile(
+        email: email,
+        fullName: fullName,
+        password: password,
+        role: backendRole,
+        phoneNumber: phoneNumber,
+        address: address,
+        dateOfBirth: dateOfBirth,
+      );
+
+      _user = response['user'];
+      _isAuthenticated = true;
+      print('Registration with profile successful: ${_user?['email']}');
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      print('Registration failed: $e');
+      _error = e.toString().replaceAll('Exception: ', '');
+      _isAuthenticated = false;
+      _user = null;
+
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   // Forgot password method
   Future<bool> forgotPassword(String email) async {
     _isLoading = true;
@@ -200,3 +262,4 @@ class AuthProvider with ChangeNotifier {
     }
   }
 }
+

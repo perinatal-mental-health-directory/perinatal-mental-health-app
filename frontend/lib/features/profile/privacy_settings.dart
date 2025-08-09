@@ -1,4 +1,7 @@
+// frontend/lib/features/profile/privacy_settings.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'privacy_provider.dart';
 
 const kPrimaryBlue = Color(0xFF3A7BD5);
 const kDarkGreyText = Color(0xFF424242);
@@ -12,39 +15,91 @@ class PrivacySettingsScreen extends StatefulWidget {
 }
 
 class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
-  bool consentGiven = true;
-  bool dataSharingEnabled = true;
-  bool allowCookies = true;
-
-  void _toggleConsent(bool value) {
-    setState(() {
-      consentGiven = value;
+  @override
+  void initState() {
+    super.initState();
+    // Load privacy preferences when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<PrivacyProvider>().loadPrivacyPreferences();
     });
-    // TODO: Send preference to backend
   }
 
-  void _toggleDataSharing(bool value) {
-    setState(() {
-      dataSharingEnabled = value;
-    });
-    // TODO: Send preference to backend
+  void _showDataRetentionInfo() async {
+    final privacyProvider = context.read<PrivacyProvider>();
+    final retentionInfo = await privacyProvider.getDataRetentionInfo();
+
+    if (mounted) {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          backgroundColor: Colors.white,
+          title: const Text("Data Retention & GDPR Compliance"),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  "Data Retention Policy",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  retentionInfo?['retention_policy'] ??
+                      "Your personal data is retained only as long as necessary to provide services or as required by law. "
+                          "After that, data is securely deleted or anonymized.",
+                  style: const TextStyle(fontSize: 14, height: 1.5),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  "GDPR Rights",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  retentionInfo?['gdpr_rights'] ??
+                      "Under GDPR, you have the right to:\n"
+                          "• Access your personal data\n"
+                          "• Rectify inaccurate data\n"
+                          "• Erase your data\n"
+                          "• Restrict processing\n"
+                          "• Data portability\n"
+                          "• Object to processing",
+                  style: const TextStyle(fontSize: 14, height: 1.5),
+                ),
+                if (retentionInfo?['last_updated'] != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    "Last updated: ${retentionInfo!['last_updated']}",
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              style: TextButton.styleFrom(foregroundColor: kPrimaryBlue),
+              child: const Text("Close"),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
-  void _toggleAllowCookies(bool value) {
-    setState(() {
-      allowCookies = value;
-    });
-    // TODO: Save cookie preferences
-  }
+  void _requestDataDownload() async {
+    final privacyProvider = context.read<PrivacyProvider>();
 
-  void _requestAccountDeletion() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: Colors.white,
-        title: const Text("Confirm Account Deletion"),
+        title: const Text("Request Data Download"),
         content: const Text(
-          "Are you sure you want to delete your account? This action cannot be undone.",
+          "We'll prepare a copy of your personal data and send it to your registered email address. "
+              "This may take up to 30 days to process.",
         ),
         actions: [
           TextButton(
@@ -55,30 +110,161 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: kPrimaryBlue),
-            child: const Text("Yes, Delete"),
+            child: const Text("Request"),
           ),
         ],
       ),
     );
 
     if (confirmed == true) {
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          backgroundColor: Colors.white,
-          title: const Text("Account Deletion Request"),
-          content: const Text(
-            "Your request has been sent. You will be contacted shortly.",
+      final success = await privacyProvider.requestDataDownload();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                success
+                    ? "Data download request submitted successfully"
+                    : privacyProvider.error ?? "Failed to submit request"
+            ),
+            backgroundColor: success ? Colors.green : Colors.red,
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              style: TextButton.styleFrom(foregroundColor: kPrimaryBlue),
-              child: const Text("OK"),
+        );
+      }
+    }
+  }
+
+  void _requestAccountDeletion() async {
+    final TextEditingController reasonController = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: const Text("Delete Account"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "Are you sure you want to delete your account? This action cannot be undone. "
+                  "All your data will be permanently removed.",
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: "Reason for deletion (optional)",
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
             ),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            style: TextButton.styleFrom(foregroundColor: kPrimaryBlue),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text("Delete Account"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final privacyProvider = context.read<PrivacyProvider>();
+      final success = await privacyProvider.requestAccountDeletion(
+        reasonController.text.trim(),
       );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                success
+                    ? "Account deletion request submitted. You will be contacted shortly."
+                    : privacyProvider.error ?? "Failed to submit request"
+            ),
+            backgroundColor: success ? Colors.orange : Colors.red,
+          ),
+        );
+      }
+    }
+
+    reasonController.dispose();
+  }
+
+  void _exportData() async {
+    final privacyProvider = context.read<PrivacyProvider>();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        backgroundColor: Colors.white,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text("Preparing your data export..."),
+          ],
+        ),
+      ),
+    );
+
+    final exportData = await privacyProvider.exportUserData();
+
+    if (mounted) {
+      Navigator.pop(context); // Close loading dialog
+
+      if (exportData != null) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            backgroundColor: Colors.white,
+            title: const Text("Data Export Ready"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text("Your data has been exported successfully."),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    exportData.length > 200
+                        ? "${exportData.substring(0, 200)}..."
+                        : exportData,
+                    style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(foregroundColor: kPrimaryBlue),
+                child: const Text("Close"),
+              ),
+            ],
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(privacyProvider.error ?? "Failed to export data"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -108,62 +294,6 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
     );
   }
 
-  void _requestDataDownload() {
-    // TODO: Implement data portability request backend flow
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text("Data download request submitted"),
-        backgroundColor: kPrimaryBlue, // Use your defined blue color here
-      ),
-    );
-  }
-
-
-  void _showDataRetentionAndGDPR() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: Colors.white,
-        title: const Text("Data Retention & GDPR Compliance"),
-        content: const SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Data Retention",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              SizedBox(height: 8),
-              Text(
-                "Your personal data is retained only as long as necessary to provide services or as required by law. "
-                    "After that, data is securely deleted or anonymized.",
-                style: TextStyle(fontSize: 14, height: 1.5),
-              ),
-              SizedBox(height: 20),
-              Text(
-                "GDPR Compliance",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              SizedBox(height: 8),
-              Text(
-                "We are fully compliant with the UK GDPR regulations. You have the right to access, rectify, and delete your data at any time. "
-                    "For more details, please view our privacy policy or contact support.",
-                style: TextStyle(fontSize: 14, height: 1.5),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            style: TextButton.styleFrom(foregroundColor: Colors.blue),
-            child: const Text("Close"),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -184,75 +314,383 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Your Privacy Settings",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      body: Consumer<PrivacyProvider>(
+        builder: (context, privacyProvider, child) {
+          if (privacyProvider.isLoading && privacyProvider.preferences.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          return RefreshIndicator(
+            onRefresh: () => privacyProvider.loadPrivacyPreferences(),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: kPrimaryBlue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: kPrimaryBlue,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.privacy_tip,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Your Privacy Matters',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  color: kDarkGreyText,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Control how your data is used and shared',
+                                style: TextStyle(
+                                  color: kDarkGreyText,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  const Text(
+                    "Privacy Preferences",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Privacy Toggles
+                  _buildPrivacyToggle(
+                    title: "Data Analytics",
+                    subtitle: "Allow anonymous usage analytics to improve our services",
+                    value: privacyProvider.analyticsEnabled,
+                    onChanged: (value) => privacyProvider.updatePreference('analytics_enabled', value),
+                    icon: Icons.analytics_outlined,
+                  ),
+
+                  _buildPrivacyToggle(
+                    title: "Data Sharing with Healthcare Providers",
+                    subtitle: "Share anonymized data with approved NHS and healthcare partners",
+                    value: privacyProvider.dataSharingEnabled,
+                    onChanged: (value) => privacyProvider.updatePreference('data_sharing_enabled', value),
+                    icon: Icons.share_outlined,
+                  ),
+
+                  _buildPrivacyToggle(
+                    title: "Cookies & Local Storage",
+                    subtitle: "Allow cookies to improve your experience and save preferences",
+                    value: privacyProvider.cookiesEnabled,
+                    onChanged: (value) => privacyProvider.updatePreference('cookies_enabled', value),
+                    icon: Icons.cookie_outlined,
+                  ),
+
+                  _buildPrivacyToggle(
+                    title: "Marketing Communications",
+                    subtitle: "Receive emails about new features and health resources",
+                    value: privacyProvider.marketingEmailsEnabled,
+                    onChanged: (value) => privacyProvider.updatePreference('marketing_emails_enabled', value),
+                    icon: Icons.email_outlined,
+                  ),
+
+                  const SizedBox(height: 24),
+                  const Divider(),
+                  const SizedBox(height: 16),
+
+                  const Text(
+                    "Data Management",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Data Management Options
+                  _buildActionTile(
+                    icon: Icons.download_outlined,
+                    title: "Download My Data",
+                    subtitle: "Get a copy of your personal data",
+                    onTap: _requestDataDownload,
+                  ),
+
+                  _buildActionTile(
+                    icon: Icons.upload_outlined,
+                    title: "Export Data",
+                    subtitle: "View and export your data in JSON format",
+                    onTap: _exportData,
+                  ),
+
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 16),
+
+                  const Text(
+                    "Legal & Compliance",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+
+                  _buildActionTile(
+                    icon: Icons.policy_outlined,
+                    title: "Privacy Policy",
+                    subtitle: "Read our full privacy policy",
+                    onTap: _openPrivacyPolicy,
+                  ),
+
+                  _buildActionTile(
+                    icon: Icons.info_outline,
+                    title: "Data Retention & GDPR",
+                    subtitle: "Learn about data retention and your rights",
+                    onTap: _showDataRetentionInfo,
+                  ),
+
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 16),
+
+                  const Text(
+                    "Account Actions",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+
+                  _buildActionTile(
+                    icon: Icons.delete_forever_outlined,
+                    title: "Delete Account",
+                    subtitle: "Permanently delete your account and all data",
+                    onTap: _requestAccountDeletion,
+                    isDestructive: true,
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Error Display
+                  if (privacyProvider.error != null)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red[300]!),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline, color: Colors.red[700], size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              privacyProvider.error!,
+                              style: TextStyle(color: Colors.red[700], fontSize: 14),
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.close, color: Colors.red[700], size: 20),
+                            onPressed: () => privacyProvider.clearError(),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // Reset to Defaults
+                  const SizedBox(height: 16),
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: () async {
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            backgroundColor: Colors.white,
+                            title: const Text("Reset to Defaults"),
+                            content: const Text(
+                              "This will reset all privacy settings to their default values. "
+                                  "Are you sure you want to continue?",
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text("Cancel"),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text("Reset"),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirmed == true) {
+                          final success = await privacyProvider.resetToDefaultPreferences();
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                    success
+                                        ? "Privacy settings reset to defaults"
+                                        : "Failed to reset settings"
+                                ),
+                                backgroundColor: success ? Colors.green : Colors.red,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      icon: const Icon(Icons.restore),
+                      label: const Text("Reset to Defaults"),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.grey[600],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
+          );
+        },
+      ),
+    );
+  }
 
-            SwitchListTile(
-              title: const Text("Allow Data Tracking"),
-              subtitle: const Text("Enable anonymized analytics to improve our services"),
-              value: consentGiven,
-              onChanged: _toggleConsent,
-              activeColor: kPrimaryBlue,
-            ),
+  Widget _buildPrivacyToggle({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required Function(bool) onChanged,
+    required IconData icon,
+  }) {
+    return Consumer<PrivacyProvider>(
+      builder: (context, privacyProvider, child) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: Colors.grey.shade200),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              )
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: kPrimaryBlue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: kPrimaryBlue, size: 20),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: kDarkGreyText,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: Color(0xFF6E6E6E),
+                        fontSize: 14,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Switch(
+                value: value,
+                onChanged: privacyProvider.isLoading ? null : onChanged,
+                activeColor: kPrimaryBlue,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
-            SwitchListTile(
-              title: const Text("Allow Data Sharing"),
-              subtitle: const Text("Permit secure sharing with approved NHS and charity professionals"),
-              value: dataSharingEnabled,
-              onChanged: _toggleDataSharing,
-              activeColor: kPrimaryBlue,
-            ),
-
-            SwitchListTile(
-              title: const Text("Allow Cookies"),
-              subtitle: const Text("Help us improve your experience with cookies"),
-              value: allowCookies,
-              onChanged: _toggleAllowCookies,
-              activeColor: kPrimaryBlue,
-            ),
-
-            const SizedBox(height: 12),
-
-            ListTile(
-              leading: const Icon(Icons.download, color: kPrimaryBlue),
-              title: const Text("Request My Data"),
-              subtitle: const Text("Receive a copy of your personal data to your email"),
-              onTap: _requestDataDownload,
-            ),
-
-            const SizedBox(height: 20),
-            const Divider(),
-
-            ListTile(
-              leading: const Icon(Icons.policy, color: kPrimaryBlue),
-              title: const Text("View Full Privacy Policy"),
-              onTap: _openPrivacyPolicy,
-            ),
-
-            ListTile(
-              leading: const Icon(Icons.info_outline, color: kPrimaryBlue),
-              title: const Text("Data Retention & GDPR Compliance"),
-              onTap: _showDataRetentionAndGDPR,
-            ),
-
-            ListTile(
-              leading: const Icon(Icons.delete_forever, color: kPrimaryBlue),
-              title: const Text("Request Account Deletion"),
-              onTap: _requestAccountDeletion,
-            ),
-
-            const Divider(),
-            const SizedBox(height: 20),
-          ],
+  Widget _buildActionTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    bool isDestructive = false,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: isDestructive
+                ? Colors.red.withOpacity(0.1)
+                : kPrimaryBlue.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            color: isDestructive ? Colors.red : kPrimaryBlue,
+            size: 20,
+          ),
         ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: isDestructive ? Colors.red : kDarkGreyText,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(
+            color: Color(0xFF6E6E6E),
+            fontSize: 14,
+          ),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+        onTap: onTap,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Colors.grey.shade200),
+        ),
+        tileColor: Colors.white,
       ),
     );
   }

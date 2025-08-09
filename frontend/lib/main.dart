@@ -1,3 +1,4 @@
+// frontend/lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:perinatal_app/features/profile/profile.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +8,8 @@ import 'features/auth/login_screen.dart';
 import 'features/services/services_list.dart';
 import 'providers/auth_provider.dart';
 import 'features/services/services_provider.dart';
+import 'features/profile/profile_provider.dart';
+import 'features/profile/privacy_provider.dart';
 
 void main() {
   runApp(const MyApp());
@@ -22,6 +25,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ServicesProvider()),
+        ChangeNotifierProvider(create: (_) => ProfileProvider()),
+        ChangeNotifierProvider(create: (_) => PrivacyProvider()),
       ],
       child: MaterialApp(
         title: 'Perinatal Mental Health App',
@@ -50,60 +55,65 @@ class AppWrapper extends StatefulWidget {
 }
 
 class _AppWrapperState extends State<AppWrapper> {
+  bool _showSplash = true;
+  bool _authCheckComplete = false;
+
   @override
   void initState() {
     super.initState();
-    // Check authentication status when app starts
+
+    // Start authentication check immediately
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AuthProvider>().checkAuthStatus();
+      _checkAuthAndWait();
     });
+  }
+
+  Future<void> _checkAuthAndWait() async {
+    // Start auth check
+    final authProvider = context.read<AuthProvider>();
+
+    // Run auth check and splash timer concurrently
+    await Future.wait([
+      authProvider.checkAuthStatus(),
+      Future.delayed(const Duration(seconds: 6)), // 6 second splash
+    ]);
+
+    // Mark auth check as complete and hide splash
+    if (mounted) {
+      setState(() {
+        _authCheckComplete = true;
+        _showSplash = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Always show splash screen first
+    if (_showSplash) {
+      return const SplashScreen();
+    }
+
+    // After splash, show appropriate screen based on auth status
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
-        // Show splash screen while checking auth status
-        if (authProvider.isLoading) {
-          return const SplashScreen();
+        // If auth check is not complete yet, show loading
+        if (!_authCheckComplete) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
         }
 
         // Navigate based on authentication status
         if (authProvider.isAuthenticated) {
           return const DashboardScreen();
         } else {
-          return const SplashScreenWithNavigation();
+          return const LoginScreen();
         }
       },
     );
-  }
-}
-
-// Updated splash screen that navigates to login
-class SplashScreenWithNavigation extends StatefulWidget {
-  const SplashScreenWithNavigation({super.key});
-
-  @override
-  State<SplashScreenWithNavigation> createState() => _SplashScreenWithNavigationState();
-}
-
-class _SplashScreenWithNavigationState extends State<SplashScreenWithNavigation> {
-  @override
-  void initState() {
-    super.initState();
-    // Navigate to login after splash screen duration
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-        );
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return const SplashScreen();
   }
 }
 

@@ -153,7 +153,7 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
                   controller: _searchController,
                   onChanged: _handleSearch,
                   decoration: InputDecoration(
-                    hintText: 'Search by name, provider, or keyword',
+                    hintText: 'Search by service name or provider',
                     hintStyle: const TextStyle(color: Colors.grey),
                     prefixIcon: const Icon(Icons.search, color: kPrimaryBlue),
                     suffixIcon: _searchController.text.isNotEmpty

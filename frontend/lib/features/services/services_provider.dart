@@ -48,7 +48,7 @@ class ServicesProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await ApiService.getFeaturedServices(limit: 6);
+      final response = await ApiService.getFeaturedServices(limit: 3);
       _featuredServices = response.map((json) => ServiceModel.fromJson(json)).toList();
       print('Loaded ${_featuredServices.length} featured services');
     } catch (e) {
