@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -90,6 +91,16 @@ func (s *store) CreateUser(ctx context.Context, user *User) error {
 		user.CreatedAt,
 		user.UpdatedAt,
 	)
+
+	// Create user profile
+	profileQuery := `
+		INSERT INTO user_profiles (user_id, created_at, updated_at)
+		VALUES ($1, $2, $3)
+	`
+	_, err = s.db.Exec(ctx, profileQuery, user.ID, user.CreatedAt, user.UpdatedAt)
+	if err != nil {
+		return fmt.Errorf("failed to create user profile: %w", err)
+	}
 
 	return err
 }

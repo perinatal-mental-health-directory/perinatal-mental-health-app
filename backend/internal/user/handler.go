@@ -26,12 +26,6 @@ func (h *handler) CreateUser(c echo.Context) error {
 		})
 	}
 
-	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": err.Error(),
-		})
-	}
-
 	user, err := h.service.CreateUser(c.Request().Context(), &req)
 	if err != nil {
 		return c.JSON(http.StatusConflict, map[string]string{

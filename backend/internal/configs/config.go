@@ -5,6 +5,7 @@ import (
 	"github.com/perinatal-mental-health-app/backend/internal/logger"
 	"github.com/spf13/viper"
 	"net"
+	"os"
 	"strconv"
 )
 
@@ -19,13 +20,24 @@ type Config struct {
 }
 
 func Load() *Config {
-	viper.SetConfigName("config")
+	// Get environment from ENV variable, default to "local"
+	env := os.Getenv("APP_ENV")
+	if env == "" {
+		env = "local"
+	}
+
+	// Set config file based on environment
+	configFile := fmt.Sprintf(".%s", env)
+
+	viper.SetConfigName(configFile) // .local, .dev, .prod, etc.
 	viper.SetConfigType("env")
 	viper.AddConfigPath("./cfg")
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
-		logger.Error("No config file found in ./cfg. Using environment variables...")
+		logger.Error(fmt.Sprintf("No config file found: ./cfg/%s.env. Using environment variables...", configFile))
+	} else {
+		logger.Info(fmt.Sprintf("Loaded config from: ./cfg/%s.env", configFile))
 	}
 
 	return &Config{
@@ -39,7 +51,6 @@ func Load() *Config {
 	}
 }
 
-// PostgresURL builds the full connection string from the individual parts.
 func (c *Config) PostgresURL() string {
 	hostPort := net.JoinHostPort(c.DBHost, strconv.Itoa(c.DBPort))
 	return fmt.Sprintf(

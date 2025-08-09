@@ -12,7 +12,7 @@ import (
 var pool *pgxpool.Pool
 
 // Init sets up the global Postgres connection pool.
-func Init(cfg *config.Config) {
+func Init(cfg *config.Config) *pgxpool.Pool {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -30,6 +30,8 @@ func Init(cfg *config.Config) {
 	}
 
 	logger.Info("Connected to PostgreSQL")
+
+	return pool
 }
 
 // GetPool returns the initialized pgxpool.Pool

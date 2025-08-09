@@ -11,6 +11,8 @@ import (
 	"github.com/perinatal-mental-health-app/backend/internal/referrals"
 	"github.com/perinatal-mental-health-app/backend/internal/services"
 	"github.com/perinatal-mental-health-app/backend/internal/user"
+	"net/http"
+	"strconv"
 )
 
 func Register(e *echo.Echo, db *pgxpool.Pool, cfg *config.Config) {
@@ -64,7 +66,28 @@ func Register(e *echo.Echo, db *pgxpool.Pool, cfg *config.Config) {
 
 	// Public service routes
 	v1.GET("/services", servicesHandler.ListServices)
+	v1.GET("/services/search", servicesHandler.SearchServices) // Add this line
 	v1.GET("/services/:id", servicesHandler.GetService)
+
+	// Featured services endpoint
+	v1.GET("/services/featured", func(c echo.Context) error {
+		// Get limit from query param, default to 6
+		limit := 6
+		if l := c.QueryParam("limit"); l != "" {
+			if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 20 {
+				limit = parsed
+			}
+		}
+
+		servicesSvc, err := servicesService.GetFeaturedServices(c.Request().Context(), limit)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": err.Error(),
+			})
+		}
+
+		return c.JSON(http.StatusOK, servicesSvc)
+	})
 
 	// Admin routes for services (require staff/professional role)
 	adminServices := v1.Group("/admin/services")
@@ -73,6 +96,7 @@ func Register(e *echo.Echo, db *pgxpool.Pool, cfg *config.Config) {
 	adminServices.POST("", servicesHandler.CreateService)
 	adminServices.PUT("/:id", servicesHandler.UpdateService)
 	adminServices.DELETE("/:id", servicesHandler.DeleteService)
+	adminServices.GET("/stats", servicesHandler.GetServiceStats) // Add this line
 
 	// --- Referrals ---
 	referralsStore := referrals.NewStore(db)

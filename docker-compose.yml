@@ -1,0 +1,25 @@
+services:
+  perinatal-mental-health-app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: perinatal-mental-health-app
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15
+    container_name: perinatal-postgres
+    environment:
+      POSTGRES_USER: perinatal-mental-health-app
+      POSTGRES_PASSWORD: perinatalpass
+      POSTGRES_DB: perinataldb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  postgres_data:

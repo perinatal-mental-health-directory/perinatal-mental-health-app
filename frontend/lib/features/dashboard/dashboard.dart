@@ -3,6 +3,11 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:perinatal_app/features/profile/profile.dart';
 import 'package:provider/provider.dart';
 import '../../main.dart';
+import '../services/services_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../services/services_model.dart';
+import '../services/services_list.dart';
+import '../services/service_detail.dart';
 
 /// Primary palette used throughout the app
 const kPrimaryBlue = Color(0xFF3A7BD5);
@@ -27,16 +32,20 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final navProvider = Provider.of<NavigationProvider>(context, listen: false);
+      final servicesProvider = Provider.of<ServicesProvider>(context, listen: false);
+
       if (navProvider.currentIndex != 0) {
         navProvider.updateIndex(0);
       }
+
+      // Load featured services for dashboard
+      servicesProvider.loadFeaturedServices();
     });
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final navProvider = Provider.of<NavigationProvider>(context);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -45,56 +54,33 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
         children: [
           Container(height: 1, color: Colors.grey[200]),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _greetingCard(),
-                  const SizedBox(height: 24),
-                  _sectionTitle('Quick Actions'),
-                  const SizedBox(height: 8),
-                  _quickActionsGrid(),
-                  const SizedBox(height: 24),
-                  _sectionTitleWithLink('Featured Services', onViewAll: () {}),
-                  const SizedBox(height: 8),
-                  _featuredServiceTile(
-                    title: 'Perinatal Depression Support',
-                    description:
-                    'Confidential support for mothers experiencing depression during the perinatal period.',
-                    tags: [
-                      _buildServiceTag('NHS Approved', kPrimaryBlue,Colors.white),
-                      _buildServiceTag('Online & In‑Person', const Color(0xFFE0E0E0),kDarkGreyText),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  _featuredServiceTile(
-                    title: 'Anxiety & Stress Management',
-                    description:
-                    'Workshops and counselling to help manage anxiety and stress during the perinatal journey.',
-                    tags: [
-                      _buildServiceTag('Charity Led',const Color(0xFFFFF9C4) ,const Color(0xFFFFC107)),
-                      _buildServiceTag('In‑Person', const Color(0xFFE0E0E0),kDarkGreyText),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  _sectionTitleWithLink('Upcoming Support Groups', onViewAll: () {}),
-                  const SizedBox(height: 8),
-                  _upcomingGroupTile(
-                    title: 'New Parents Connect',
-                    schedule: 'Every Monday, 10:00 AM',
-                    location: 'Online via Zoom',
-                    participants: '15 Participants',
-                  ),
-                  const SizedBox(height: 16),
-                  _upcomingGroupTile(
-                    title: 'Mindful Motherhood',
-                    schedule: 'Wednesdays, 6:30 PM',
-                    location: 'Community Center Hall',
-                    participants: '10 Participants',
-                  ),
-                  const SizedBox(height: 12),
-                ],
+            child: RefreshIndicator(
+              onRefresh: () async {
+                final servicesProvider = Provider.of<ServicesProvider>(context, listen: false);
+                await servicesProvider.loadFeaturedServices();
+              },
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _greetingCard(),
+                    const SizedBox(height: 24),
+                    _sectionTitle('Quick Actions'),
+                    const SizedBox(height: 8),
+                    _quickActionsGrid(),
+                    const SizedBox(height: 24),
+                    _sectionTitleWithLink('Featured Services', onViewAll: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const FindServicesScreen()),
+                      );
+                    }),
+                    const SizedBox(height: 8),
+                    _featuredServicesSection(),
+                    const SizedBox(height: 12),
+                  ],
+                ),
               ),
             ),
           ),
@@ -119,8 +105,8 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
       ),
       title: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text(
+        children: const [
+          Text(
             'Your Mental Wellness',
             style: TextStyle(
               fontWeight: FontWeight.bold,
@@ -128,7 +114,7 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
               fontSize: 18,
             ),
           ),
-          const Text(
+          Text(
             'Journey',
             style: TextStyle(
               fontWeight: FontWeight.bold,
@@ -175,66 +161,68 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
 
   // ─────────────────────── Greeting Blue Card ───────────────────────
   Widget _greetingCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-      decoration: BoxDecoration(
-        color: kPrimaryBlue,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Hello Jane centered at the top
-          const Center(
-            child: Text(
-              'Hello Jane!',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                height: 1.2,
-              ),
-            ),
-          ),
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        final userName = authProvider.user?['full_name'] ?? 'User';
+        final firstName = userName.split(' ')[0];
 
-          const SizedBox(height: 16),
-
-          const Center(
-            child: Text(
-              'Your journey to mental wellness is important',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                height: 1.4,
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+          decoration: BoxDecoration(
+            color: kPrimaryBlue,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
               ),
-            ),
+            ],
           ),
-
-          const Center(
-            child: Text(
-              'Explore resources tailored for you',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                height: 1.4,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Text(
+                  'Hello $firstName!',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    height: 1.2,
+                  ),
+                ),
               ),
-            ),
-          )
-        ],
-      ),
+              const SizedBox(height: 16),
+              const Center(
+                child: Text(
+                  'Your journey to mental wellness is important',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              const Center(
+                child: Text(
+                  'Explore resources tailored for you',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    height: 1.4,
+                  ),
+                ),
+              )
+            ],
+          ),
+        );
+      },
     );
   }
-
 
   // ───────────────────────── Section Title ──────────────────────────
   Widget _sectionTitle(String text) {
@@ -261,7 +249,7 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
               fontWeight: FontWeight.bold,
               fontSize: 12,
               decoration: TextDecoration.underline,
-              decorationColor: kPrimaryBlue// Underlined
+              decorationColor: kPrimaryBlue,
             ),
           ),
         ),
@@ -272,10 +260,30 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
   // ─────────────────────── Quick Actions Grid ───────────────────────
   Widget _quickActionsGrid() {
     final actions = [
-      ('Find Services', Icons.search),
-      ('Support Groups', Icons.group),
-      ('Resources', Icons.menu_book),
-      ('Your Journey', FontAwesomeIcons.heartPulse), // Use heart pulse icon here
+      ('Find Services', Icons.search, () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const FindServicesScreen()),
+        );
+      }),
+      ('Support Groups', Icons.group, () {
+        // TODO: Navigate to support groups
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Support Groups coming soon!')),
+        );
+      }),
+      ('Resources', Icons.menu_book, () {
+        // TODO: Navigate to resources
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Resources coming soon!')),
+        );
+      }),
+      ('Your Journey', FontAwesomeIcons.heartPulse, () {
+        // TODO: Navigate to user journey
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Your Journey coming soon!')),
+        );
+      }),
     ];
 
     return GridView.builder(
@@ -289,9 +297,9 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
       ),
       itemCount: actions.length,
       itemBuilder: (_, index) {
-        final (title, icon) = actions[index];
+        final (title, icon, onTap) = actions[index];
         return InkWell(
-          onTap: () {},
+          onTap: onTap,
           child: Container(
             decoration: BoxDecoration(
               border: Border.all(color: Colors.black12),
@@ -324,12 +332,72 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
     );
   }
 
+  // ───────────────────── Featured Services Section ──────────────────────
+  Widget _featuredServicesSection() {
+    return Consumer<ServicesProvider>(
+      builder: (context, servicesProvider, child) {
+        if (servicesProvider.isFeaturedLoading) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        if (servicesProvider.error != null) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.red[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.red[300]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red[700]),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Failed to load services: ${servicesProvider.error}',
+                    style: TextStyle(color: Colors.red[700]),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        if (servicesProvider.featuredServices.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Center(
+              child: Text(
+                'No featured services available',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          );
+        }
+
+        return Column(
+          children: servicesProvider.featuredServices.map((service) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _featuredServiceTile(service),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
   // ───────────────────── Featured Service Card ──────────────────────
-  Widget _featuredServiceTile({
-    required String title,
-    required String description,
-    required List<Widget> tags,
-  }) {
+  Widget _featuredServiceTile(ServiceModel service) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -342,59 +410,118 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
         children: [
           Row(
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 18,
                 backgroundColor: kLightGrey,
                 child: Icon(FontAwesomeIcons.heartPulse, color: kPrimaryBlue, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      service.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      service.providerName,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: kDarkGreyText,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            description,
+            service.shortDescription,
             style: const TextStyle(fontSize: 14, color: kDarkGreyText),
           ),
           const SizedBox(height: 8),
-          Wrap(spacing: 6, runSpacing: -4, children: tags),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kActionGreen,
-                padding:
-                const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              _buildServiceTag(
+                service.serviceTypeDisplayName,
+                service.serviceTypeColor,
+                Colors.white,
               ),
-              onPressed: () {},
-              child: const Text(
-                'View Details',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold, // Bold text
+              if (service.address != null && service.serviceType != 'online')
+                _buildServiceTag(
+                  'Location Available',
+                  const Color(0xFFE0E0E0),
+                  kDarkGreyText,
+                ),
+              if (service.hasContact)
+                _buildServiceTag(
+                  'Contact Available',
+                  const Color(0xFFE8F5E8),
+                  kActionGreen,
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              if (service.address != null)
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.location_on_outlined, size: 14, color: kDarkGreyText),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          service.displayAddress,
+                          style: const TextStyle(fontSize: 12, color: kDarkGreyText),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kActionGreen,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ServiceDetailScreen(service: service),
+                    ),
+                  );
+                },
+                child: const Text(
+                  'View Details',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  // Tag (chip‑like) widget
-  Widget _buildServiceTag(String text, Color bgColor,Color fontColor) {
+  // Tag (chip-like) widget
+  Widget _buildServiceTag(String text, Color bgColor, Color fontColor) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -405,93 +532,9 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
         text,
         style: TextStyle(
           fontSize: 12,
-          color: (bgColor == kPrimaryBlue) ? Colors.white : fontColor,
-          fontWeight:
-          (bgColor == kPrimaryBlue) ? FontWeight.bold : FontWeight.bold,
+          color: fontColor,
+          fontWeight: FontWeight.bold,
         ),
-      ),
-    );
-  }
-
-  // ───────────────────── Upcoming Group Card ────────────────────────
-  Widget _upcomingGroupTile({
-    required String title,
-    required String schedule,
-    required String location,
-    required String participants,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.black12),
-        borderRadius: BorderRadius.circular(12),
-        color: Colors.white,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const CircleAvatar(
-                radius: 18,
-                backgroundColor: kLightGrey,
-                child: Icon(Icons.calendar_today_outlined,
-                    color: kPrimaryBlue, size: 18),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(schedule,
-              style: const TextStyle(fontSize: 14, color: kDarkGreyText)),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              const Icon(Icons.location_on_outlined,
-                  size: 16, color: kDarkGreyText),
-              const SizedBox(width: 4),
-              Text(location,
-                  style: const TextStyle(fontSize: 14, color: kDarkGreyText)),
-              const SizedBox(width: 12),
-              const Icon(Icons.group,
-                  size: 16, color: kDarkGreyText),
-              const SizedBox(width: 4),
-              Text(participants,
-                  style: const TextStyle(fontSize: 14, color: kDarkGreyText)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kActionGreen,
-                padding:
-                const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-              ),
-              onPressed: () {},
-              child: const Text(
-                'Learn More',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold, // Bold text
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -533,16 +576,25 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
 
                 switch (index) {
                   case 0:
-                    Navigator.pushReplacementNamed(context, '/dashboard');
+                  // Already on dashboard
                     break;
                   case 1:
-                    Navigator.pushReplacementNamed(context, '/resources');
+                  // TODO: Navigate to resources
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Resources coming soon!')),
+                    );
                     break;
                   case 2:
-                    Navigator.pushReplacementNamed(context, '/services');
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const FindServicesScreen()),
+                    );
                     break;
                   case 3:
-                    Navigator.pushReplacementNamed(context, '/groups');
+                  // TODO: Navigate to groups
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Support Groups coming soon!')),
+                    );
                     break;
                 }
               },
@@ -572,5 +624,4 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
       ),
     );
   }
-
 }

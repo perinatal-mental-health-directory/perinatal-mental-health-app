@@ -25,12 +25,6 @@ func (h *handler) Login(c echo.Context) error {
 		})
 	}
 
-	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": err.Error(),
-		})
-	}
-
 	authResp, err := h.service.Login(c.Request().Context(), &req)
 	if err != nil {
 		return c.JSON(http.StatusUnauthorized, map[string]string{
@@ -47,12 +41,6 @@ func (h *handler) Register(c echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "Invalid request format",
-		})
-	}
-
-	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": err.Error(),
 		})
 	}
 
@@ -75,12 +63,6 @@ func (h *handler) RefreshToken(c echo.Context) error {
 		})
 	}
 
-	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": err.Error(),
-		})
-	}
-
 	authResp, err := h.service.RefreshToken(c.Request().Context(), &req)
 	if err != nil {
 		return c.JSON(http.StatusUnauthorized, map[string]string{
@@ -97,12 +79,6 @@ func (h *handler) ForgotPassword(c echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "Invalid request format",
-		})
-	}
-
-	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": err.Error(),
 		})
 	}
 
@@ -124,12 +100,6 @@ func (h *handler) ResetPassword(c echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "Invalid request format",
-		})
-	}
-
-	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": err.Error(),
 		})
 	}
 

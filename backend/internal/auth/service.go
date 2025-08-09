@@ -24,36 +24,36 @@ func NewService(store Store, jwtService JWTService) Service {
 // Login authenticates a user and returns a JWT token
 func (s *service) Login(ctx context.Context, req *LoginRequest) (*AuthResponse, error) {
 	// Get user from database
-	user, err := s.store.GetUserByEmail(ctx, req.Email)
+	fetchedUser, err := s.store.GetUserByEmail(ctx, req.Email)
 	if err != nil {
-		return nil, fmt.Errorf("invalid credentials")
+		return nil, fmt.Errorf("Invalid Email Address or Password")
 	}
 
 	// Check if user is active
-	if !user.IsActive {
+	if !fetchedUser.IsActive {
 		return nil, fmt.Errorf("account is deactivated")
 	}
 
 	// Verify password
-	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password))
+	err = bcrypt.CompareHashAndPassword([]byte(fetchedUser.PasswordHash), []byte(req.Password))
 	if err != nil {
 		return nil, fmt.Errorf("invalid credentials")
 	}
 
 	// Generate JWT token
-	token, expiresAt, err := s.jwtService.GenerateToken(user.ID, user.Email, string(user.Role))
+	token, expiresAt, err := s.jwtService.GenerateToken(fetchedUser.ID, fetchedUser.Email, string(fetchedUser.Role))
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token")
 	}
 
 	// Generate refresh token
-	refreshToken, _, err := s.jwtService.GenerateRefreshToken(user.ID)
+	refreshToken, _, err := s.jwtService.GenerateRefreshToken(fetchedUser.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate refresh token")
 	}
 
 	// Update last login time
-	err = s.store.UpdateLastLogin(ctx, user.ID)
+	err = s.store.UpdateLastLogin(ctx, fetchedUser.ID)
 	if err != nil {
 		// Log error but don't fail the login
 		fmt.Printf("Failed to update last login: %v\n", err)
@@ -64,10 +64,10 @@ func (s *service) Login(ctx context.Context, req *LoginRequest) (*AuthResponse, 
 		RefreshToken: refreshToken,
 		ExpiresAt:    expiresAt,
 		User: UserInfo{
-			ID:       user.ID,
-			Email:    user.Email,
-			FullName: user.FullName,
-			Role:     string(user.Role),
+			ID:       fetchedUser.ID,
+			Email:    fetchedUser.Email,
+			FullName: fetchedUser.FullName,
+			Role:     string(fetchedUser.Role),
 		},
 	}, nil
 }
@@ -175,7 +175,6 @@ func (s *service) RefreshToken(ctx context.Context, req *RefreshTokenRequest) (*
 func (s *service) ForgotPassword(ctx context.Context, req *ForgotPasswordRequest) error {
 	user, err := s.store.GetUserByEmail(ctx, req.Email)
 	if err != nil {
-		// Don't reveal if user exists or not for security
 		return nil
 	}
 

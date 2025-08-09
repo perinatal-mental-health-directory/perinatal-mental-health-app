@@ -1,6 +1,8 @@
 package main
 
 import (
+	db2 "github.com/perinatal-mental-health-app/backend/internal/db"
+	"github.com/perinatal-mental-health-app/backend/internal/logger"
 	"log"
 	"os"
 
@@ -13,12 +15,13 @@ import (
 
 func main() {
 	e := echo.New()
-
+	
+	logger.Init()
 	// Load configuration
 	cfg := config.Load()
 
 	// Initialize database
-	db := config.InitPostgres(cfg)
+	db := db2.Init(cfg)
 	defer db.Close()
 
 	// CORS middleware

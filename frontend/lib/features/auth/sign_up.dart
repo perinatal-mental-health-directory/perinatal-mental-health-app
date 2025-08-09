@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:perinatal_app/features/profile/privacy_policy_screen.dart';
+import 'package:provider/provider.dart';
 import 'package:perinatal_app/features/auth/login_screen.dart';
 import '../dashboard/dashboard.dart';
+import '../../providers/auth_provider.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -11,11 +14,12 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _fullNameController = TextEditingController();
-  final TextEditingController _emailController   = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
-  int  _selectedRoleIndex = 0; // Default: Professional
-  bool _agreedToTerms     = false;
+  int _selectedRoleIndex = 2; // Default: Professional
+  bool _agreedToTerms = false;
 
   final List<String> _roles = ['Professional', 'Support Staff', 'Parent'];
 
@@ -27,7 +31,68 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
-  // ───────────────────────────── Role Selector ──────────────────────────────
+  void _handleSignUp() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (!_agreedToTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please accept the Terms of Use and Privacy Policy'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final authProvider = context.read<AuthProvider>();
+    authProvider.clearError();
+
+    final success = await authProvider.register(
+      _emailController.text.trim(),
+      _fullNameController.text.trim(),
+      _passwordController.text,
+      _roles[_selectedRoleIndex],
+    );
+
+    if (success && mounted) {
+      // Navigate to dashboard
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const DashboardScreen()),
+      );
+    }
+  }
+
+  String? _validateEmail(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter your Email address';
+    }
+    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+      return 'Please enter a valid Email address';
+    }
+    return null;
+  }
+
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter a Password';
+    }
+    if (value.length < 8) {
+      return 'Password must be at least 8 characters long';
+    }
+    return null;
+  }
+
+  String? _validateFullName(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter your full name';
+    }
+    if (value.trim().length < 2) {
+      return 'Name must be at least 2 characters long';
+    }
+    return null;
+  }
+
+  // Role Selector Widget
   Widget _buildRoleSelector() {
     return Container(
       decoration: BoxDecoration(
@@ -70,7 +135,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   BorderRadius _roleBorder(int index) {
     if (_roles.length == 1) return BorderRadius.circular(8);
-    if (index == 0)               {
+    if (index == 0) {
       return const BorderRadius.only(
         topLeft: Radius.circular(8),
         bottomLeft: Radius.circular(8),
@@ -85,7 +150,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return BorderRadius.zero;
   }
 
-  // ───────────────────────────────── UI ──────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -110,184 +174,262 @@ class _SignUpScreenState extends State<SignUpScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 16),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 16),
 
-              // App title
-              const Center(
-                child: Text(
-                  'Perinatal Mental Health App',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF3A7BD5),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Full Name
-              const Text('Full Name',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _fullNameController,
-                decoration: InputDecoration(
-                  hintText: 'Enter your full name',
-                  hintStyle: TextStyle(color: Colors.grey.shade500),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Email
-              const Text('Email',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _emailController,
-                decoration: InputDecoration(
-                  hintText: 'Enter your email',
-                  hintStyle: TextStyle(color: Colors.grey.shade500),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                keyboardType: TextInputType.emailAddress,
-              ),
-
-              const SizedBox(height: 16),
-
-              // Password
-              const Text('Password',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  hintText: 'Create your password',
-                  hintStyle: TextStyle(color: Colors.grey.shade500),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility),
-                    onPressed: () =>
-                        setState(() => _obscurePassword = !_obscurePassword),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Role selector
-              const Text('Select Your Role',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              const SizedBox(height: 8),
-              _buildRoleSelector(),
-
-              const SizedBox(height: 16),
-
-              // Terms & Privacy
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Checkbox(
-                    value: _agreedToTerms,
-                    activeColor: const Color(0xFF4CAF50),
-                    onChanged: (value) =>
-                        setState(() => _agreedToTerms = value ?? false),
-                  ),
-                  Expanded(
-                    child: Wrap(
-                      children: [
-                        const Text('I agree to the ',
-                            style: TextStyle(fontSize: 14)),
-                        GestureDetector(
-                          onTap: () {
-                            // TODO: open policy URLs
-                          },
-                          child: const Text(
-                            'Privacy Policy and Terms of Use',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFFFFC107),
-                            ),
-                          ),
-                        ),
-                      ],
+                // App title
+                const Center(
+                  child: Text(
+                    'Perinatal Mental Health App',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF3A7BD5),
                     ),
                   ),
-                ],
-              ),
+                ),
 
-              const SizedBox(height: 16),
+                const SizedBox(height: 24),
 
-              // Sign‑Up button (enabled only when terms agreed)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _agreedToTerms
-                      ? () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => const DashboardScreen()),
+                // Error message
+                Consumer<AuthProvider>(
+                  builder: (context, authProvider, child) {
+                    if (authProvider.error != null) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.red[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.red[300]!),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.error_outline, color: Colors.red[700], size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                authProvider.error!,
+                                style: TextStyle(color: Colors.red[700], fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        ),
                       );
-                  }
-                      : null, // disables button when unchecked
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4CAF50),
-                    disabledBackgroundColor: Colors.grey.shade400,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+
+                // Full Name
+                const Text('Full Name',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _fullNameController,
+                  validator: _validateFullName,
+                  decoration: InputDecoration(
+                    hintText: 'Enter your full name',
+                    hintStyle: TextStyle(color: Colors.grey.shade500),
+                    border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
-                    'Sign Up',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2.2,
+                ),
+
+                const SizedBox(height: 16),
+
+                // Email
+                const Text('Email',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _emailController,
+                  validator: _validateEmail,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    hintText: 'Enter your Email Address',
+                    hintStyle: TextStyle(color: Colors.grey.shade500),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
-              // Already have account
-              Center(
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (context) => const LoginScreen()),
+                // Password
+                const Text('Password',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _passwordController,
+                  validator: _validatePassword,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    hintText: 'Enter your Password',
+                    hintStyle: TextStyle(color: Colors.grey.shade500),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        color: Colors.grey.shade600,
+                      ),
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Role selector
+                const Text('Select Your Role',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 8),
+                _buildRoleSelector(),
+
+                const SizedBox(height: 16),
+
+                // Terms & Privacy
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Checkbox(
+                      value: _agreedToTerms,
+                      activeColor: const Color(0xFF4CAF50),
+                      onChanged: (value) =>
+                          setState(() => _agreedToTerms = value ?? false),
+                    ),
+                    Expanded(
+                      child: Wrap(
+                        children: [
+                          const Text('I agree to the ', style: TextStyle(fontSize: 14)),
+                          GestureDetector(
+                            onTap: () => _openPrivacyPolicy(context),
+                            child: const Text(
+                              'Privacy Policy and Terms of Use',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFFFC107),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // Sign-Up button
+                Consumer<AuthProvider>(
+                  builder: (context, authProvider, child) {
+                    return SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: (authProvider.isLoading || !_agreedToTerms)
+                            ? null
+                            : _handleSignUp,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4CAF50),
+                          disabledBackgroundColor: Colors.grey.shade400,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: authProvider.isLoading
+                            ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                            : const Text(
+                          'Sign Up',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 2.2,
+                          ),
+                        ),
+                      ),
                     );
                   },
-                  child: const Text(
-                    'Already have an account? Log in.',
-                    style: TextStyle(
-                      color: Color(0xFFFFC107),
-                      fontWeight: FontWeight.bold,
+                ),
+
+                const SizedBox(height: 20),
+
+                // Already have account
+                Center(
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => const LoginScreen()),
+                      );
+                    },
+                    child: const Text(
+                      'Already have an account? Log in',
+                      style: TextStyle(
+                        color: Color(0xFFFFC107),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+void _openPrivacyPolicy(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      backgroundColor: Colors.white,
+      title: const Text(
+        "Privacy Policy & Terms of Use",
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
+      content: const SingleChildScrollView(
+        child: Text(
+          "We are committed to protecting your personal information in accordance "
+              "with the UK GDPR and Data Protection Act. Your data will only be used "
+              "with your explicit consent, and solely for improving services, providing "
+              "appropriate support, and ensuring safe care. You have the right to update "
+              "your preferences, request access to your data, and request deletion at any time. "
+              "We will never share your information with third parties without your permission.\n\n"
+              "By using this app, you agree to use the services responsibly, respect the privacy "
+              "of other users, and comply with all applicable laws. You must not attempt to gain "
+              "unauthorized access to the app, its backend systems, or other user accounts. "
+              "We reserve the right to suspend accounts that violate these terms.",
+          style: TextStyle(fontSize: 14, height: 1.5),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          style: TextButton.styleFrom(foregroundColor: kPrimaryBlue),
+          child: const Text("Close"),
+        ),
+      ],
+    ),
+  );
 }
