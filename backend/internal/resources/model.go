@@ -7,7 +7,7 @@ import (
 
 // Resource represents a mental health resource
 type Resource struct {
-	ID                int       `json:"id" db:"id"`
+	ID                string    `json:"id" db:"id"`
 	Title             string    `json:"title" db:"title"`
 	Description       string    `json:"description" db:"description"`
 	Content           string    `json:"content" db:"content"`

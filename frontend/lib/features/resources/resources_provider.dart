@@ -54,7 +54,7 @@ class ResourcesProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await ApiService.getFeaturedResources(limit: 6);
+      final response = await ApiService.getFeaturedResources(limit: 3);
       _featuredResources = response.map((json) => ResourceModel.fromJson(json)).toList();
       print('Loaded ${_featuredResources.length} featured resources');
     } catch (e) {
