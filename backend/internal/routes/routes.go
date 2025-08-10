@@ -13,6 +13,7 @@ import (
 	"github.com/perinatal-mental-health-app/backend/internal/referrals"
 	"github.com/perinatal-mental-health-app/backend/internal/resources"
 	"github.com/perinatal-mental-health-app/backend/internal/services"
+	"github.com/perinatal-mental-health-app/backend/internal/support_groups"
 	"github.com/perinatal-mental-health-app/backend/internal/user"
 	"net/http"
 	"strconv"
@@ -146,6 +147,38 @@ func Register(e *echo.Echo, db *pgxpool.Pool, cfg *config.Config) {
 	adminResources.POST("/:id/toggle-featured", resourcesHandler.ToggleResourceFeatured)
 	adminResources.GET("/stats", resourcesHandler.GetResourceStats)
 
+	// --- Support Groups ---
+	supportGroupsStore := support_groups.NewStore(db)
+	supportGroupsService := support_groups.NewService(supportGroupsStore)
+	supportGroupsHandler := support_groups.NewHandler(supportGroupsService)
+
+	// Public support group routes
+	v1.GET("/support-groups", supportGroupsHandler.ListSupportGroups)
+	v1.GET("/support-groups/search", supportGroupsHandler.SearchSupportGroups)
+	v1.GET("/support-groups/:id", supportGroupsHandler.GetSupportGroup)
+	v1.GET("/support-groups/by-category", supportGroupsHandler.GetSupportGroupsByCategory)
+	v1.GET("/support-groups/by-platform", supportGroupsHandler.GetSupportGroupsByPlatform)
+
+	// Protected support group routes (require authentication)
+	supportGroupsAuth := v1.Group("/support-groups")
+	supportGroupsAuth.Use(custommiddleware.JWTMiddleware(jwtService))
+	supportGroupsAuth.POST("/join", supportGroupsHandler.JoinGroup)
+	supportGroupsAuth.DELETE("/:id/leave", supportGroupsHandler.LeaveGroup)
+	supportGroupsAuth.GET("/:id/members", supportGroupsHandler.GetGroupMembers)
+
+	// User's support groups
+	v1.GET("/my-groups", supportGroupsHandler.GetUserGroups, custommiddleware.JWTMiddleware(jwtService))
+
+	// Admin routes for support groups (require staff/professional role)
+	adminSupportGroups := v1.Group("/admin/support-groups")
+	adminSupportGroups.Use(custommiddleware.JWTMiddleware(jwtService))
+	adminSupportGroups.Use(custommiddleware.RoleMiddleware("nhs_staff", "professional"))
+	adminSupportGroups.POST("", supportGroupsHandler.CreateSupportGroup)
+	adminSupportGroups.PUT("/:id", supportGroupsHandler.UpdateSupportGroup)
+	adminSupportGroups.DELETE("/:id", supportGroupsHandler.DeleteSupportGroup)
+	adminSupportGroups.DELETE("/:id/members/:user_id", supportGroupsHandler.RemoveUserFromGroup)
+	adminSupportGroups.GET("/stats", supportGroupsHandler.GetSupportGroupStats)
+
 	// --- Referrals ---
 	referralsStore := referrals.NewStore(db)
 	referralsService := referrals.NewService(referralsStore)
@@ -181,19 +214,4 @@ func Register(e *echo.Echo, db *pgxpool.Pool, cfg *config.Config) {
 	adminFeedback.Use(custommiddleware.RoleMiddleware("nhs_staff", "professional"))
 	adminFeedback.GET("", feedbackHandler.ListFeedback)
 	adminFeedback.GET("/stats", feedbackHandler.GetFeedbackStats)
-
-	// Future modules to be implemented:
-	// --- Support Groups ---
-	// groupHandler := group.NewHandler(...)
-	// groupsGroup := v1.Group("/groups")
-	// groupsGroup.Use(custommiddleware.JWTMiddleware(jwtService))
-	// groupsGroup.GET("", groupHandler.List)
-	// groupsGroup.POST("/:id/join", groupHandler.Join)
-
-	// --- Notifications ---
-	// notificationHandler := notification.NewHandler(...)
-	// notificationsGroup := v1.Group("/notifications")
-	// notificationsGroup.Use(custommiddleware.JWTMiddleware(jwtService))
-	// notificationsGroup.GET("", notificationHandler.List)
-	// notificationsGroup.PUT("/:id/read", notificationHandler.MarkAsRead)
 }

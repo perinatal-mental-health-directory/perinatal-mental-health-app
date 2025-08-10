@@ -1201,5 +1201,361 @@ class ApiService {
       // Don't throw error for view count as it's not critical
     }
   }
+
+  // Add these methods to your existing ApiService class in frontend/lib/services/api_service.dart
+
+  // Support Groups endpoints
+  static Future<Map<String, dynamic>> getSupportGroups({
+    int page = 1,
+    int pageSize = 20,
+    String? category,
+    String? platform,
+    String? search,
+  }) async {
+    try {
+      // Build query parameters
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'page_size': pageSize.toString(),
+      };
+
+      if (category != null && category.isNotEmpty) {
+        queryParams['category'] = category;
+      }
+
+      if (platform != null && platform.isNotEmpty) {
+        queryParams['platform'] = platform;
+      }
+
+      if (search != null && search.isNotEmpty) {
+        queryParams['search'] = search;
+      }
+
+      final uri = Uri.parse('$baseUrl/support-groups').replace(queryParameters: queryParams);
+
+      final response = await http.get(uri, headers: {'Content-Type': 'application/json'});
+
+      print('Get support groups response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to get support groups');
+      }
+    } catch (e) {
+      print('Get support groups error: $e');
+      return {
+        'support_groups': [],
+        'total': 0,
+        'page': page,
+        'page_size': pageSize,
+        'total_pages': 0,
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> getSupportGroup(int groupId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/support-groups/$groupId'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      print('Get support group response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Support group not found');
+      }
+    } catch (e) {
+      print('Get support group error: $e');
+      throw Exception('Failed to get support group: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> searchSupportGroups({
+    required String query,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/support-groups/search').replace(queryParameters: {
+        'q': query,
+        'page': page.toString(),
+        'page_size': pageSize.toString(),
+      });
+
+      final response = await http.get(uri, headers: {'Content-Type': 'application/json'});
+
+      print('Search support groups response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to search support groups');
+      }
+    } catch (e) {
+      print('Search support groups error: $e');
+      return {
+        'support_groups': [],
+        'total': 0,
+        'page': page,
+        'page_size': pageSize,
+        'total_pages': 0,
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> getSupportGroupsByCategory({
+    required String category,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/support-groups/by-category').replace(queryParameters: {
+        'category': category,
+        'page': page.toString(),
+        'page_size': pageSize.toString(),
+      });
+
+      final response = await http.get(uri, headers: {'Content-Type': 'application/json'});
+
+      print('Get support groups by category response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to get support groups by category');
+      }
+    } catch (e) {
+      print('Get support groups by category error: $e');
+      return {
+        'support_groups': [],
+        'total': 0,
+        'page': page,
+        'page_size': pageSize,
+        'total_pages': 0,
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> getSupportGroupsByPlatform({
+    required String platform,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/support-groups/by-platform').replace(queryParameters: {
+        'platform': platform,
+        'page': page.toString(),
+        'page_size': pageSize.toString(),
+      });
+
+      final response = await http.get(uri, headers: {'Content-Type': 'application/json'});
+
+      print('Get support groups by platform response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to get support groups by platform');
+      }
+    } catch (e) {
+      print('Get support groups by platform error: $e');
+      return {
+        'support_groups': [],
+        'total': 0,
+        'page': page,
+        'page_size': pageSize,
+        'total_pages': 0,
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> getUserGroups() async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/my-groups'),
+        headers: headers,
+      );
+
+      print('Get user groups response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.get(
+          Uri.parse('$baseUrl/my-groups'),
+          headers: newHeaders,
+        );
+
+        if (retryResponse.statusCode == 200) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          throw Exception('Failed to get user groups');
+        }
+      } else {
+        throw Exception('Failed to get user groups');
+      }
+    } catch (e) {
+      print('Get user groups error: $e');
+      return {
+        'groups': [],
+        'total': 0,
+      };
+    }
+  }
+
+  static Future<void> joinSupportGroup(int groupId) async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/support-groups/join'),
+        headers: headers,
+        body: jsonEncode({'group_id': groupId}),
+      );
+
+      print('Join support group response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return;
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.post(
+          Uri.parse('$baseUrl/support-groups/join'),
+          headers: newHeaders,
+          body: jsonEncode({'group_id': groupId}),
+        );
+
+        if (retryResponse.statusCode != 200) {
+          final errorData = jsonDecode(retryResponse.body);
+          throw Exception(errorData['error'] ?? 'Failed to join support group');
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to join support group');
+      }
+    } catch (e) {
+      print('Join support group error: $e');
+      throw Exception('Failed to join support group: $e');
+    }
+  }
+
+  static Future<void> leaveSupportGroup(int groupId) async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/support-groups/$groupId/leave'),
+        headers: headers,
+      );
+
+      print('Leave support group response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return;
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.delete(
+          Uri.parse('$baseUrl/support-groups/$groupId/leave'),
+          headers: newHeaders,
+        );
+
+        if (retryResponse.statusCode != 200) {
+          final errorData = jsonDecode(retryResponse.body);
+          throw Exception(errorData['error'] ?? 'Failed to leave support group');
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to leave support group');
+      }
+    } catch (e) {
+      print('Leave support group error: $e');
+      throw Exception('Failed to leave support group: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getSupportGroupMembers(int groupId) async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/support-groups/$groupId/members'),
+        headers: headers,
+      );
+
+      print('Get support group members response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.get(
+          Uri.parse('$baseUrl/support-groups/$groupId/members'),
+          headers: newHeaders,
+        );
+
+        if (retryResponse.statusCode == 200) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          throw Exception('Failed to get support group members');
+        }
+      } else {
+        throw Exception('Failed to get support group members');
+      }
+    } catch (e) {
+      print('Get support group members error: $e');
+      return {
+        'members': [],
+        'total': 0,
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> getSupportGroupStats() async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/support-groups/stats'),
+        headers: headers,
+      );
+
+      print('Get support group stats response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.get(
+          Uri.parse('$baseUrl/admin/support-groups/stats'),
+          headers: newHeaders,
+        );
+
+        if (retryResponse.statusCode == 200) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          throw Exception('Failed to get support group stats');
+        }
+      } else {
+        throw Exception('Failed to get support group stats');
+      }
+    } catch (e) {
+      print('Get support group stats error: $e');
+      return {
+        'total_groups': 0,
+        'active_groups': 0,
+        'total_members': 0,
+        'groups_by_category': {},
+        'groups_by_platform': {},
+        'popular_groups': [],
+      };
+    }
+  }
 }
 

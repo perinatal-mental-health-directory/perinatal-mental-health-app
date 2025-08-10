@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../main.dart';
 import '../profile/profile.dart';
+import '../support_groups/support_groups_list.dart';
 import 'resources_provider.dart';
 import 'resources_model.dart';
 import 'resources_detail.dart';
@@ -743,9 +744,9 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> with Automati
                     Navigator.pushReplacementNamed(context, '/services');
                     break;
                   case 3:
-                  // TODO: Navigate to groups
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Support Groups coming soon!')),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const SupportGroupsListScreen()),
                     );
                     break;
                 }

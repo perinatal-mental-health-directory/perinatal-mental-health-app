@@ -1,47 +1,50 @@
+// frontend/lib/features/support_groups/support_groups_list.dart
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../main.dart';
 import '../profile/profile.dart';
-import '../support_groups/support_groups_list.dart';
-import 'services_provider.dart';
-import 'services_model.dart';
-import 'service_detail.dart';
+import 'support_groups_provider.dart';
+import 'support_groups_model.dart';
+import 'support_group_detail.dart';
 
 const kPrimaryBlue = Color(0xFF3A7BD5);
 const kLightGrey = Color(0xFFF6F6F6);
 const kDarkGreyText = Color(0xFF424242);
+const kActionGreen = Color(0xFF4CAF50);
 
-class FindServicesScreen extends StatefulWidget {
-  const FindServicesScreen({super.key});
+class SupportGroupsListScreen extends StatefulWidget {
+  const SupportGroupsListScreen({super.key});
 
   @override
-  State<FindServicesScreen> createState() => _FindServicesScreenState();
+  State<SupportGroupsListScreen> createState() => _SupportGroupsListScreenState();
 }
 
-class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticKeepAliveClientMixin {
+class _SupportGroupsListScreenState extends State<SupportGroupsListScreen> with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  String _selectedServiceType = '';
+  String _selectedCategory = '';
+  String _selectedPlatform = '';
 
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final servicesProvider = Provider.of<ServicesProvider>(context, listen: false);
-      servicesProvider.loadServices(refresh: true);
+      final supportGroupsProvider = Provider.of<SupportGroupsProvider>(context, listen: false);
+      supportGroupsProvider.loadSupportGroups(refresh: true);
+      supportGroupsProvider.loadUserGroups();
     });
 
     // Add scroll listener for pagination
     _scrollController.addListener(() {
       if (_scrollController.position.pixels >=
           _scrollController.position.maxScrollExtent - 200) {
-        final servicesProvider = Provider.of<ServicesProvider>(context, listen: false);
-        servicesProvider.loadMoreServices();
+        final supportGroupsProvider = Provider.of<SupportGroupsProvider>(context, listen: false);
+        supportGroupsProvider.loadMoreSupportGroups();
       }
     });
   }
@@ -54,24 +57,37 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
   }
 
   void _handleSearch(String query) {
-    final servicesProvider = Provider.of<ServicesProvider>(context, listen: false);
+    final supportGroupsProvider = Provider.of<SupportGroupsProvider>(context, listen: false);
     if (query.trim().isEmpty) {
-      servicesProvider.clearFilters();
+      supportGroupsProvider.clearFilters();
     } else {
-      servicesProvider.searchServices(query.trim());
+      supportGroupsProvider.searchSupportGroups(query.trim());
     }
   }
 
-  void _handleServiceTypeFilter(String serviceType) {
+  void _handleCategoryFilter(String category) {
     setState(() {
-      _selectedServiceType = serviceType;
+      _selectedCategory = category;
     });
 
-    final servicesProvider = Provider.of<ServicesProvider>(context, listen: false);
-    if (serviceType.isEmpty) {
-      servicesProvider.clearFilters();
+    final supportGroupsProvider = Provider.of<SupportGroupsProvider>(context, listen: false);
+    if (category.isEmpty) {
+      supportGroupsProvider.clearFilters();
     } else {
-      servicesProvider.filterByServiceType(serviceType);
+      supportGroupsProvider.filterByCategory(category);
+    }
+  }
+
+  void _handlePlatformFilter(String platform) {
+    setState(() {
+      _selectedPlatform = platform;
+    });
+
+    final supportGroupsProvider = Provider.of<SupportGroupsProvider>(context, listen: false);
+    if (platform.isEmpty) {
+      supportGroupsProvider.clearFilters();
+    } else {
+      supportGroupsProvider.filterByPlatform(platform);
     }
   }
 
@@ -93,7 +109,7 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
           },
         ),
         title: const Text(
-          'Find Services',
+          'Support Groups',
           style: TextStyle(
             color: kDarkGreyText,
             fontWeight: FontWeight.bold,
@@ -154,7 +170,7 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
                   controller: _searchController,
                   onChanged: _handleSearch,
                   decoration: InputDecoration(
-                    hintText: 'Search by service name or provider',
+                    hintText: 'Search by group name or category',
                     hintStyle: const TextStyle(color: Colors.grey),
                     prefixIcon: const Icon(Icons.search, color: kPrimaryBlue),
                     suffixIcon: _searchController.text.isNotEmpty
@@ -177,18 +193,41 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
                 ),
                 const SizedBox(height: 12),
 
-                // Service Type Filter
+                // Category Filter
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
                       _buildFilterChip('All', ''),
                       const SizedBox(width: 8),
-                      _buildFilterChip('Online', 'online'),
+                      _buildFilterChip('Postnatal', 'postnatal'),
                       const SizedBox(width: 8),
-                      _buildFilterChip('In-Person', 'in_person'),
+                      _buildFilterChip('Prenatal', 'prenatal'),
                       const SizedBox(width: 8),
-                      _buildFilterChip('Hybrid', 'hybrid'),
+                      _buildFilterChip('Anxiety', 'anxiety'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('Depression', 'depression'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('Partner Support', 'partner_support'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('General', 'general'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Platform Filter
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildPlatformChip('All', ''),
+                      const SizedBox(width: 8),
+                      _buildPlatformChip('Online', 'online'),
+                      const SizedBox(width: 8),
+                      _buildPlatformChip('In-Person', 'in_person'),
+                      const SizedBox(width: 8),
+                      _buildPlatformChip('Hybrid', 'hybrid'),
                     ],
                   ),
                 ),
@@ -196,17 +235,17 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
             ),
           ),
 
-          // Services List
+          // Support Groups List
           Expanded(
-            child: Consumer<ServicesProvider>(
-              builder: (context, servicesProvider, child) {
-                if (servicesProvider.isLoading && servicesProvider.services.isEmpty) {
+            child: Consumer<SupportGroupsProvider>(
+              builder: (context, supportGroupsProvider, child) {
+                if (supportGroupsProvider.isLoading && supportGroupsProvider.supportGroups.isEmpty) {
                   return const Center(
                     child: CircularProgressIndicator(),
                   );
                 }
 
-                if (servicesProvider.error != null && servicesProvider.services.isEmpty) {
+                if (supportGroupsProvider.error != null && supportGroupsProvider.supportGroups.isEmpty) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -218,7 +257,7 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Failed to load services',
+                          'Failed to load support groups',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -227,7 +266,7 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          servicesProvider.error!,
+                          supportGroupsProvider.error!,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.grey[500],
@@ -236,7 +275,7 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
                         const SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: () {
-                            servicesProvider.loadServices(refresh: true);
+                            supportGroupsProvider.loadSupportGroups(refresh: true);
                           },
                           child: const Text('Retry'),
                         ),
@@ -245,19 +284,19 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
                   );
                 }
 
-                if (servicesProvider.services.isEmpty) {
+                if (supportGroupsProvider.supportGroups.isEmpty) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.search_off,
+                          Icons.group_off,
                           size: 64,
                           color: Colors.grey[400],
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'No services found',
+                          'No support groups found',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -278,16 +317,16 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
 
                 return RefreshIndicator(
                   onRefresh: () async {
-                    await servicesProvider.loadServices(refresh: true);
+                    await supportGroupsProvider.refreshAll();
                   },
                   child: ListView.separated(
                     controller: _scrollController,
                     padding: const EdgeInsets.all(16),
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemCount: servicesProvider.services.length +
-                        (servicesProvider.hasMorePages ? 1 : 0),
+                    itemCount: supportGroupsProvider.supportGroups.length +
+                        (supportGroupsProvider.hasMorePages ? 1 : 0),
                     itemBuilder: (context, index) {
-                      if (index >= servicesProvider.services.length) {
+                      if (index >= supportGroupsProvider.supportGroups.length) {
                         // Loading indicator at the bottom
                         return const Padding(
                           padding: EdgeInsets.all(16.0),
@@ -297,8 +336,9 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
                         );
                       }
 
-                      final service = servicesProvider.services[index];
-                      return _buildServiceTile(service);
+                      final group = supportGroupsProvider.supportGroups[index];
+                      final isUserMember = supportGroupsProvider.isUserMemberOfGroup(group.id);
+                      return _buildSupportGroupTile(group, isUserMember);
                     },
                   ),
                 );
@@ -314,18 +354,19 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
   }
 
   Widget _buildFilterChip(String label, String value) {
-    final isSelected = _selectedServiceType == value;
+    final isSelected = _selectedCategory == value;
     return FilterChip(
       label: Text(label),
       selected: isSelected,
       onSelected: (selected) {
-        _handleServiceTypeFilter(selected ? value : '');
+        _handleCategoryFilter(selected ? value : '');
       },
       selectedColor: kPrimaryBlue.withOpacity(0.2),
       checkmarkColor: kPrimaryBlue,
       labelStyle: TextStyle(
         color: isSelected ? kPrimaryBlue : kDarkGreyText,
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        fontSize: 12,
       ),
       side: BorderSide(
         color: isSelected ? kPrimaryBlue : Colors.grey[300]!,
@@ -333,13 +374,34 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
     );
   }
 
-  Widget _buildServiceTile(ServiceModel service) {
+  Widget _buildPlatformChip(String label, String value) {
+    final isSelected = _selectedPlatform == value;
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        _handlePlatformFilter(selected ? value : '');
+      },
+      selectedColor: kActionGreen.withOpacity(0.2),
+      checkmarkColor: kActionGreen,
+      labelStyle: TextStyle(
+        color: isSelected ? kActionGreen : kDarkGreyText,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        fontSize: 12,
+      ),
+      side: BorderSide(
+        color: isSelected ? kActionGreen : Colors.grey[300]!,
+      ),
+    );
+  }
+
+  Widget _buildSupportGroupTile(SupportGroupModel group, bool isUserMember) {
     return InkWell(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ServiceDetailScreen(service: service),
+            builder: (context) => SupportGroupDetailScreen(group: group),
           ),
         );
       },
@@ -360,15 +422,15 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header with name and provider
+            // Header with name and membership status
             Row(
               children: [
                 CircleAvatar(
                   radius: 20,
-                  backgroundColor: service.serviceTypeColor.withOpacity(0.1),
+                  backgroundColor: group.categoryColor.withOpacity(0.1),
                   child: Icon(
-                    _getServiceTypeIcon(service.serviceType),
-                    color: service.serviceTypeColor,
+                    group.categoryIcon,
+                    color: group.categoryColor,
                     size: 20,
                   ),
                 ),
@@ -377,16 +439,38 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        service.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              group.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                          if (isUserMember)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: kActionGreen,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                'Joined',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        service.providerName,
+                        group.categoryDisplayName,
                         style: const TextStyle(
                           color: kDarkGreyText,
                           fontSize: 14,
@@ -402,7 +486,7 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
 
             // Description
             Text(
-              service.shortDescription,
+              group.shortDescription,
               style: const TextStyle(
                 fontSize: 14,
                 color: kDarkGreyText,
@@ -412,35 +496,46 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
 
             const SizedBox(height: 12),
 
-            // Service type and location
+            // Platform and meeting time
             Row(
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: service.serviceTypeColor,
+                    color: group.platformColor,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(
-                    service.serviceTypeDisplayName,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        group.platformIcon,
+                        size: 12,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        group.platformDisplayName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                if (service.address != null) ...[
+                if (group.hasMeetingTime) ...[
                   Icon(
-                    Icons.location_on_outlined,
+                    Icons.schedule,
                     size: 14,
                     color: Colors.grey[600],
                   ),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
-                      service.displayAddress,
+                      group.displayMeetingTime,
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[600],
@@ -454,25 +549,27 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
 
             const SizedBox(height: 12),
 
-            // Contact methods and action
+            // Doctor info and action
             Row(
               children: [
-                if (service.contactMethods.isNotEmpty) ...[
+                if (group.hasDoctorInfo) ...[
                   Icon(
-                    Icons.contact_support_outlined,
+                    Icons.medical_services,
                     size: 14,
                     color: Colors.grey[600],
                   ),
                   const SizedBox(width: 4),
-                  Text(
-                    service.contactMethods.join(', '),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
+                  Expanded(
+                    child: Text(
+                      'Professional support available',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
                     ),
                   ),
                 ],
-                const Spacer(),
+                if (!group.hasDoctorInfo) const Spacer(),
                 Icon(
                   Icons.arrow_forward_ios,
                   size: 16,
@@ -484,19 +581,6 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
         ),
       ),
     );
-  }
-
-  IconData _getServiceTypeIcon(String serviceType) {
-    switch (serviceType) {
-      case 'online':
-        return Icons.computer;
-      case 'in_person':
-        return Icons.location_on;
-      case 'hybrid':
-        return Icons.sync_alt;
-      default:
-        return Icons.medical_services;
-    }
   }
 
   Widget _buildBottomNavBar(NavigationProvider navProvider) {
@@ -537,13 +621,10 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
                     Navigator.pushReplacementNamed(context, '/resources');
                     break;
                   case 2:
-                  // Already on Services screen
+                    Navigator.pushReplacementNamed(context, '/services');
                     break;
                   case 3:
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const SupportGroupsListScreen()),
-                    );
+                  // Already on Support Groups screen
                     break;
                 }
               },

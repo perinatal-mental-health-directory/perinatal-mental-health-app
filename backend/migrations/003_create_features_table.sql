@@ -74,15 +74,54 @@ CREATE TABLE resources (
 CREATE TABLE support_groups (
                                 id SERIAL PRIMARY KEY,
                                 name VARCHAR(255) NOT NULL,
-                                category VARCHAR(100) NOT NULL,
-                                platform VARCHAR(100) NOT NULL,
+                                description TEXT NOT NULL,
+                                category VARCHAR(50) NOT NULL CHECK (category IN ('postnatal', 'prenatal', 'anxiety', 'depression', 'partner_support', 'general')),
+                                platform VARCHAR(50) NOT NULL CHECK (platform IN ('online', 'in_person', 'hybrid')),
                                 doctor_info TEXT,
-                                url VARCHAR(255),
+                                url VARCHAR(500),
                                 guidelines TEXT,
+                                meeting_time VARCHAR(255),
+                                max_members INTEGER CHECK (max_members > 0),
                                 is_active BOOLEAN DEFAULT true,
                                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Create group_memberships table for tracking user memberships
+CREATE TABLE group_memberships (
+                                   id SERIAL PRIMARY KEY,
+                                   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                                   group_id INTEGER NOT NULL REFERENCES support_groups(id) ON DELETE CASCADE,
+                                   joined_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                   is_active BOOLEAN DEFAULT true,
+                                   role VARCHAR(20) NOT NULL DEFAULT 'member' CHECK (role IN ('member', 'moderator', 'admin')),
+                                   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                                   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                                   UNIQUE(user_id, group_id) -- Prevent duplicate memberships
+);
+
+-- Create indexes for better performance
+CREATE INDEX idx_support_groups_category ON support_groups(category);
+CREATE INDEX idx_support_groups_platform ON support_groups(platform);
+CREATE INDEX idx_support_groups_active ON support_groups(is_active);
+CREATE INDEX idx_support_groups_created_at ON support_groups(created_at);
+
+CREATE INDEX idx_group_memberships_user_id ON group_memberships(user_id);
+CREATE INDEX idx_group_memberships_group_id ON group_memberships(group_id);
+CREATE INDEX idx_group_memberships_active ON group_memberships(is_active);
+CREATE INDEX idx_group_memberships_joined_at ON group_memberships(joined_at);
+CREATE INDEX idx_group_memberships_user_group_active ON group_memberships(user_id, group_id, is_active);
+
+-- Create triggers to automatically update updated_at
+CREATE TRIGGER update_support_groups_updated_at
+    BEFORE UPDATE ON support_groups
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_group_memberships_updated_at
+    BEFORE UPDATE ON group_memberships
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
 
 -- Create indexes for better performance
 CREATE INDEX idx_services_name ON services(name);

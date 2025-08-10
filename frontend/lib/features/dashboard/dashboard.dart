@@ -12,6 +12,7 @@ import '../../providers/auth_provider.dart';
 import '../services/services_model.dart';
 import '../services/services_list.dart';
 import '../services/service_detail.dart';
+import '../support_groups/support_groups_list.dart';
 
 /// Primary palette used throughout the app
 const kPrimaryBlue = Color(0xFF3A7BD5);
@@ -287,9 +288,9 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
         );
       }),
       ('Support Groups', Icons.group, () {
-        // TODO: Navigate to support groups
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Support Groups coming soon!')),
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const SupportGroupsListScreen()),
         );
       }),
       ('Resources', Icons.menu_book, () {
@@ -611,9 +612,9 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
                     );
                     break;
                   case 3:
-                  // TODO: Navigate to groups
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Support Groups coming soon!')),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const SupportGroupsListScreen()),
                     );
                     break;
                 }
