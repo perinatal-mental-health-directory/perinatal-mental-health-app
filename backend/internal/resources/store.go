@@ -191,7 +191,8 @@ func (s *store) GetResourceByID(ctx context.Context, resourceID int) (*Resource,
 // GetFeaturedResources retrieves featured resources
 func (s *store) GetFeaturedResources(ctx context.Context, limit int) ([]Resource, error) {
 	query := `
-		SELECT id, title, description, content, resource_type, url, author, tags, 
+		SELECT id, title, description, content, resource_type, url, author, 
+		       tags::text, -- Scan as text instead of array
 			   target_audience, estimated_read_time, is_featured, is_active, view_count,
 			   created_at, updated_at
 		FROM resources
@@ -209,7 +210,9 @@ func (s *store) GetFeaturedResources(ctx context.Context, limit int) ([]Resource
 	var resources []Resource
 	for rows.Next() {
 		var resource Resource
-		err := rows.Scan(
+		var tagsText string
+
+		err = rows.Scan(
 			&resource.ID,
 			&resource.Title,
 			&resource.Description,
@@ -217,7 +220,7 @@ func (s *store) GetFeaturedResources(ctx context.Context, limit int) ([]Resource
 			&resource.ResourceType,
 			&resource.URL,
 			&resource.Author,
-			pq.Array(&resource.Tags),
+			&tagsText, // tags as string
 			&resource.TargetAudience,
 			&resource.EstimatedReadTime,
 			&resource.IsFeatured,
@@ -230,6 +233,9 @@ func (s *store) GetFeaturedResources(ctx context.Context, limit int) ([]Resource
 			return nil, fmt.Errorf("failed to scan resource: %w", err)
 		}
 
+		// Manual parsing: works even if no {}
+		resource.Tags = parsePGArray(tagsText)
+
 		resources = append(resources, resource)
 	}
 
@@ -238,6 +244,23 @@ func (s *store) GetFeaturedResources(ctx context.Context, limit int) ([]Resource
 	}
 
 	return resources, nil
+}
+
+// parsePGArray safely parses Postgres array text into []string
+func parsePGArray(s string) []string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return []string{}
+	}
+	// Remove { and }
+	s = strings.TrimPrefix(s, "{")
+	s = strings.TrimSuffix(s, "}")
+	// Split by comma
+	parts := strings.Split(s, ",")
+	for i := range parts {
+		parts[i] = strings.TrimSpace(parts[i])
+	}
+	return parts
 }
 
 // SearchResources searches resources by query

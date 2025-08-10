@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 
 class ResourceModel {
-  final int id;
+  final String id;
   final String title;
   final String description;
   final String content;

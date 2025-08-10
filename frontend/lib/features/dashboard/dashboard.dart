@@ -3,6 +3,10 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:perinatal_app/features/profile/profile.dart';
 import 'package:provider/provider.dart';
 import '../../main.dart';
+import '../resources/resources_detail.dart';
+import '../resources/resources_list.dart';
+import '../resources/resources_model.dart';
+import '../resources/resources_provider.dart';
 import '../services/services_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../services/services_model.dart';
@@ -27,19 +31,22 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
   bool get wantKeepAlive => true;
 
   @override
+  @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final navProvider = Provider.of<NavigationProvider>(context, listen: false);
       final servicesProvider = Provider.of<ServicesProvider>(context, listen: false);
+      final resourcesProvider = Provider.of<ResourcesProvider>(context, listen: false);
 
       if (navProvider.currentIndex != 0) {
         navProvider.updateIndex(0);
       }
 
-      // Load featured services for dashboard
+      // Load featured services and resources for dashboard
       servicesProvider.loadFeaturedServices();
+      resourcesProvider.loadFeaturedResources();
     });
   }
 
@@ -273,9 +280,9 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
         );
       }),
       ('Resources', Icons.menu_book, () {
-        // TODO: Navigate to resources
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Resources coming soon!')),
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ResourcesListScreen()),
         );
       }),
       ('Your Journey', FontAwesomeIcons.heartPulse, () {
@@ -579,9 +586,9 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
                   // Already on dashboard
                     break;
                   case 1:
-                  // TODO: Navigate to resources
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Resources coming soon!')),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ResourcesListScreen()),
                     );
                     break;
                   case 2:
@@ -621,6 +628,179 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
             );
           }),
         ),
+      ),
+    );
+  }
+
+  Widget _featuredResourcesSection() {
+    return Consumer<ResourcesProvider>(
+      builder: (context, resourcesProvider, child) {
+        if (resourcesProvider.isFeaturedLoading) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        if (resourcesProvider.error != null) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.red[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.red[300]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red[700]),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Failed to load resources: ${resourcesProvider.error}',
+                    style: TextStyle(color: Colors.red[700]),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        if (resourcesProvider.featuredResources.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Center(
+              child: Text(
+                'No featured resources available',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          );
+        }
+
+        return Column(
+          children: resourcesProvider.featuredResources.take(3).map((resource) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _featuredResourceTile(resource),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+// Add this method to build featured resource tiles
+  Widget _featuredResourceTile(ResourceModel resource) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.black12),
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: resource.resourceTypeColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  resource.resourceTypeIcon,
+                  color: resource.resourceTypeColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      resource.title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      resource.resourceTypeDisplayName,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: kDarkGreyText,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            resource.shortDescription,
+            style: const TextStyle(fontSize: 14, color: kDarkGreyText),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: resource.resourceTypeColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  resource.targetAudienceDisplayName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kActionGreen,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ResourceDetailScreen(resource: resource),
+                    ),
+                  );
+                },
+                child: const Text(
+                  'Read More',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

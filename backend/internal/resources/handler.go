@@ -84,7 +84,7 @@ func (h *handler) GetResource(c echo.Context) error {
 
 // GetFeaturedResources retrieves featured resources
 func (h *handler) GetFeaturedResources(c echo.Context) error {
-	limit := 6
+	limit := 3
 	if l := c.QueryParam("limit"); l != "" {
 		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 20 {
 			limit = parsed
