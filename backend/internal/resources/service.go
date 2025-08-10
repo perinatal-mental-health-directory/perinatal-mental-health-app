@@ -38,9 +38,9 @@ func (s *service) ListResources(ctx context.Context, req *ListResourcesRequest) 
 	return s.store.ListResources(ctx, req)
 }
 
-// GetResource retrieves a resource by ID
-func (s *service) GetResource(ctx context.Context, resourceID int) (*Resource, error) {
-	if resourceID <= 0 {
+// GetResource retrieves a resource by ID (string UUID)
+func (s *service) GetResource(ctx context.Context, resourceID string) (*Resource, error) {
+	if resourceID == "" {
 		return nil, fmt.Errorf("invalid resource ID")
 	}
 
@@ -82,8 +82,8 @@ func (s *service) SearchResources(ctx context.Context, query string, page, pageS
 }
 
 // IncrementViewCount increments the view count for a resource
-func (s *service) IncrementViewCount(ctx context.Context, resourceID int) error {
-	if resourceID <= 0 {
+func (s *service) IncrementViewCount(ctx context.Context, resourceID string) error {
+	if resourceID == "" {
 		return fmt.Errorf("invalid resource ID")
 	}
 
@@ -161,8 +161,8 @@ func (s *service) CreateResource(ctx context.Context, req *CreateResourceRequest
 }
 
 // UpdateResource updates a resource (admin only)
-func (s *service) UpdateResource(ctx context.Context, resourceID int, req *UpdateResourceRequest) (*Resource, error) {
-	if resourceID <= 0 {
+func (s *service) UpdateResource(ctx context.Context, resourceID string, req *UpdateResourceRequest) (*Resource, error) {
+	if resourceID == "" {
 		return nil, fmt.Errorf("invalid resource ID")
 	}
 
@@ -180,8 +180,8 @@ func (s *service) UpdateResource(ctx context.Context, resourceID int, req *Updat
 }
 
 // DeleteResource soft deletes a resource (admin only)
-func (s *service) DeleteResource(ctx context.Context, resourceID int) error {
-	if resourceID <= 0 {
+func (s *service) DeleteResource(ctx context.Context, resourceID string) error {
+	if resourceID == "" {
 		return fmt.Errorf("invalid resource ID")
 	}
 
@@ -189,8 +189,8 @@ func (s *service) DeleteResource(ctx context.Context, resourceID int) error {
 }
 
 // ToggleResourceFeatured toggles the featured status of a resource (admin only)
-func (s *service) ToggleResourceFeatured(ctx context.Context, resourceID int) error {
-	if resourceID <= 0 {
+func (s *service) ToggleResourceFeatured(ctx context.Context, resourceID string) error {
+	if resourceID == "" {
 		return fmt.Errorf("invalid resource ID")
 	}
 

@@ -64,11 +64,10 @@ func (h *handler) ListResources(c echo.Context) error {
 
 // GetResource retrieves a resource by ID
 func (h *handler) GetResource(c echo.Context) error {
-	resourceIDStr := c.Param("id")
-	resourceID, err := strconv.Atoi(resourceIDStr)
-	if err != nil {
+	resourceID := c.Param("id")
+	if resourceID == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid resource ID",
+			"error": "Resource ID is required",
 		})
 	}
 
@@ -208,15 +207,14 @@ func (h *handler) GetResourcesByAudience(c echo.Context) error {
 
 // IncrementViewCount increments the view count for a resource
 func (h *handler) IncrementViewCount(c echo.Context) error {
-	resourceIDStr := c.Param("id")
-	resourceID, err := strconv.Atoi(resourceIDStr)
-	if err != nil {
+	resourceID := c.Param("id")
+	if resourceID == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid resource ID",
+			"error": "Resource ID is required",
 		})
 	}
 
-	err = h.service.IncrementViewCount(c.Request().Context(), resourceID)
+	err := h.service.IncrementViewCount(c.Request().Context(), resourceID)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{
 			"error": err.Error(),
@@ -289,11 +287,10 @@ func (h *handler) CreateResource(c echo.Context) error {
 
 // UpdateResource updates a resource (admin only)
 func (h *handler) UpdateResource(c echo.Context) error {
-	resourceIDStr := c.Param("id")
-	resourceID, err := strconv.Atoi(resourceIDStr)
-	if err != nil {
+	resourceID := c.Param("id")
+	if resourceID == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid resource ID",
+			"error": "Resource ID is required",
 		})
 	}
 
@@ -322,15 +319,14 @@ func (h *handler) UpdateResource(c echo.Context) error {
 
 // DeleteResource deletes a resource (admin only)
 func (h *handler) DeleteResource(c echo.Context) error {
-	resourceIDStr := c.Param("id")
-	resourceID, err := strconv.Atoi(resourceIDStr)
-	if err != nil {
+	resourceID := c.Param("id")
+	if resourceID == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid resource ID",
+			"error": "Resource ID is required",
 		})
 	}
 
-	err = h.service.DeleteResource(c.Request().Context(), resourceID)
+	err := h.service.DeleteResource(c.Request().Context(), resourceID)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{
 			"error": err.Error(),
@@ -344,15 +340,14 @@ func (h *handler) DeleteResource(c echo.Context) error {
 
 // ToggleResourceFeatured toggles the featured status of a resource (admin only)
 func (h *handler) ToggleResourceFeatured(c echo.Context) error {
-	resourceIDStr := c.Param("id")
-	resourceID, err := strconv.Atoi(resourceIDStr)
-	if err != nil {
+	resourceID := c.Param("id")
+	if resourceID == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid resource ID",
+			"error": "Resource ID is required",
 		})
 	}
 
-	err = h.service.ToggleResourceFeatured(c.Request().Context(), resourceID)
+	err := h.service.ToggleResourceFeatured(c.Request().Context(), resourceID)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{
 			"error": err.Error(),
