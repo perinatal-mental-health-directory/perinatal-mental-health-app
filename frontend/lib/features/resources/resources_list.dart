@@ -409,7 +409,7 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> with Automati
       onTap: () {
         // Increment view count
         final resourcesProvider = Provider.of<ResourcesProvider>(context, listen: false);
-        resourcesProvider.incrementViewCount(resource.id as int);
+        resourcesProvider.incrementViewCount(resource.id);
 
         Navigator.push(
           context,
