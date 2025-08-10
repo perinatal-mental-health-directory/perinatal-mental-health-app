@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lib/pq"
@@ -149,8 +150,8 @@ func (s *store) ListResources(ctx context.Context, req *ListResourcesRequest) (*
 	}, nil
 }
 
-// GetResourceByID retrieves a resource by ID
-func (s *store) GetResourceByID(ctx context.Context, resourceID int) (*Resource, error) {
+// GetResourceByID retrieves a resource by ID (UUID string)
+func (s *store) GetResourceByID(ctx context.Context, resourceID string) (*Resource, error) {
 	query := `
 		SELECT id, title, description, content, resource_type, url, author, tags, 
 			   target_audience, estimated_read_time, is_featured, is_active, view_count,
@@ -188,11 +189,10 @@ func (s *store) GetResourceByID(ctx context.Context, resourceID int) (*Resource,
 	return &resource, nil
 }
 
-// GetFeaturedResources retrieves featured resources
+// GetFeaturedResources retrieves featured resources - FIXED
 func (s *store) GetFeaturedResources(ctx context.Context, limit int) ([]Resource, error) {
 	query := `
-		SELECT id, title, description, content, resource_type, url, author, 
-		       tags::text, -- Scan as text instead of array
+		SELECT id, title, description, content, resource_type, url, author, tags,
 			   target_audience, estimated_read_time, is_featured, is_active, view_count,
 			   created_at, updated_at
 		FROM resources
@@ -210,7 +210,6 @@ func (s *store) GetFeaturedResources(ctx context.Context, limit int) ([]Resource
 	var resources []Resource
 	for rows.Next() {
 		var resource Resource
-		var tagsText string
 
 		err = rows.Scan(
 			&resource.ID,
@@ -220,7 +219,7 @@ func (s *store) GetFeaturedResources(ctx context.Context, limit int) ([]Resource
 			&resource.ResourceType,
 			&resource.URL,
 			&resource.Author,
-			&tagsText, // tags as string
+			pq.Array(&resource.Tags), // Use pq.Array for proper array scanning
 			&resource.TargetAudience,
 			&resource.EstimatedReadTime,
 			&resource.IsFeatured,
@@ -233,9 +232,6 @@ func (s *store) GetFeaturedResources(ctx context.Context, limit int) ([]Resource
 			return nil, fmt.Errorf("failed to scan resource: %w", err)
 		}
 
-		// Manual parsing: works even if no {}
-		resource.Tags = parsePGArray(tagsText)
-
 		resources = append(resources, resource)
 	}
 
@@ -244,23 +240,6 @@ func (s *store) GetFeaturedResources(ctx context.Context, limit int) ([]Resource
 	}
 
 	return resources, nil
-}
-
-// parsePGArray safely parses Postgres array text into []string
-func parsePGArray(s string) []string {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return []string{}
-	}
-	// Remove { and }
-	s = strings.TrimPrefix(s, "{")
-	s = strings.TrimSuffix(s, "}")
-	// Split by comma
-	parts := strings.Split(s, ",")
-	for i := range parts {
-		parts[i] = strings.TrimSpace(parts[i])
-	}
-	return parts
 }
 
 // SearchResources searches resources by query
@@ -294,7 +273,7 @@ func (s *store) GetResourcesByAudience(ctx context.Context, audience string, pag
 }
 
 // IncrementViewCount increments the view count for a resource
-func (s *store) IncrementViewCount(ctx context.Context, resourceID int) error {
+func (s *store) IncrementViewCount(ctx context.Context, resourceID string) error {
 	query := `
 		UPDATE resources 
 		SET view_count = view_count + 1, updated_at = $1
@@ -470,13 +449,14 @@ func (s *store) GetPopularResources(ctx context.Context, limit int) ([]Resource,
 
 // CreateResource creates a new resource (admin only)
 func (s *store) CreateResource(ctx context.Context, req *CreateResourceRequest) (*Resource, error) {
+	resourceID := uuid.New()
 	now := time.Now()
 
 	query := `
-		INSERT INTO resources (title, description, content, resource_type, url, author, 
+		INSERT INTO resources (id, title, description, content, resource_type, url, author, 
 							  tags, target_audience, estimated_read_time, is_featured, 
 							  is_active, view_count, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		RETURNING id, title, description, content, resource_type, url, author, tags, 
 				  target_audience, estimated_read_time, is_featured, is_active, view_count,
 				  created_at, updated_at
@@ -484,6 +464,7 @@ func (s *store) CreateResource(ctx context.Context, req *CreateResourceRequest) 
 
 	var resource Resource
 	err := s.db.QueryRow(ctx, query,
+		resourceID,
 		req.Title,
 		req.Description,
 		req.Content,
@@ -524,7 +505,7 @@ func (s *store) CreateResource(ctx context.Context, req *CreateResourceRequest) 
 }
 
 // UpdateResource updates a resource (admin only)
-func (s *store) UpdateResource(ctx context.Context, resourceID int, req *UpdateResourceRequest) (*Resource, error) {
+func (s *store) UpdateResource(ctx context.Context, resourceID string, req *UpdateResourceRequest) (*Resource, error) {
 	var setParts []string
 	var args []interface{}
 	argIndex := 1
@@ -640,7 +621,7 @@ func (s *store) UpdateResource(ctx context.Context, resourceID int, req *UpdateR
 }
 
 // DeleteResource soft deletes a resource (admin only)
-func (s *store) DeleteResource(ctx context.Context, resourceID int) error {
+func (s *store) DeleteResource(ctx context.Context, resourceID string) error {
 	query := `
 		UPDATE resources 
 		SET is_active = false, updated_at = $1
@@ -660,7 +641,7 @@ func (s *store) DeleteResource(ctx context.Context, resourceID int) error {
 }
 
 // ToggleResourceFeatured toggles the featured status of a resource (admin only)
-func (s *store) ToggleResourceFeatured(ctx context.Context, resourceID int) error {
+func (s *store) ToggleResourceFeatured(ctx context.Context, resourceID string) error {
 	query := `
 		UPDATE resources 
 		SET is_featured = NOT is_featured, updated_at = $1
