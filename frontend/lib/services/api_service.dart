@@ -495,8 +495,6 @@ class ApiService {
     }
   }
 
-  // Add these methods to your existing ApiService class in frontend/lib/services/api_service.dart
-
   // Change password endpoint
   static Future<void> changePassword({
     required String currentPassword,
@@ -690,13 +688,6 @@ class ApiService {
     }
   }
 
-  // Add these methods to your ApiService class in frontend/lib/services/api_service.dart
-
-  // Privacy Settings Endpoints
-
-  // Add these methods to your existing ApiService class in frontend/lib/services/api_service.dart
-
-// Privacy Settings Endpoints
 
 // Get user privacy preferences
   static Future<Map<String, dynamic>> getPrivacyPreferences() async {

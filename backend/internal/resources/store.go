@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/lib/pq"
 )
 
 type store struct {
@@ -19,6 +18,31 @@ type store struct {
 func NewStore(db *pgxpool.Pool) Store {
 	return &store{
 		db: db,
+	}
+}
+
+// Helper function to scan arrays with NULL handling
+func scanStringArray(src interface{}) ([]string, error) {
+	if src == nil {
+		return []string{}, nil
+	}
+
+	switch v := src.(type) {
+	case []string:
+		return v, nil
+	case []interface{}:
+		result := make([]string, len(v))
+		for i, item := range v {
+			if item == nil {
+				result[i] = ""
+			} else {
+				result[i] = fmt.Sprintf("%v", item)
+			}
+		}
+		return result, nil
+	default:
+		// Fallback for other types
+		return []string{}, nil
 	}
 }
 
@@ -87,9 +111,10 @@ func (s *store) ListResources(ctx context.Context, req *ListResourcesRequest) (*
 		return nil, fmt.Errorf("failed to count resources: %w", err)
 	}
 
-	// Get resources with pagination
+	// Get resources with pagination - using COALESCE for NULL arrays
 	query := fmt.Sprintf(`
-		SELECT id, title, description, content, resource_type, url, author, tags, 
+		SELECT id, title, description, content, resource_type, url, author, 
+			   COALESCE(tags, '{}') as tags,
 			   target_audience, estimated_read_time, is_featured, is_active, view_count,
 			   created_at, updated_at
 		FROM resources
@@ -111,6 +136,8 @@ func (s *store) ListResources(ctx context.Context, req *ListResourcesRequest) (*
 	var resources []Resource
 	for rows.Next() {
 		var resource Resource
+		var tags []string // Use pgx native array scanning
+
 		err := rows.Scan(
 			&resource.ID,
 			&resource.Title,
@@ -119,7 +146,7 @@ func (s *store) ListResources(ctx context.Context, req *ListResourcesRequest) (*
 			&resource.ResourceType,
 			&resource.URL,
 			&resource.Author,
-			pq.Array(&resource.Tags),
+			&tags, // pgx can scan directly into []string
 			&resource.TargetAudience,
 			&resource.EstimatedReadTime,
 			&resource.IsFeatured,
@@ -130,6 +157,13 @@ func (s *store) ListResources(ctx context.Context, req *ListResourcesRequest) (*
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan resource: %w", err)
+		}
+
+		// Ensure tags is never nil
+		if tags == nil {
+			resource.Tags = []string{}
+		} else {
+			resource.Tags = tags
 		}
 
 		resources = append(resources, resource)
@@ -153,7 +187,8 @@ func (s *store) ListResources(ctx context.Context, req *ListResourcesRequest) (*
 // GetResourceByID retrieves a resource by ID (UUID string)
 func (s *store) GetResourceByID(ctx context.Context, resourceID string) (*Resource, error) {
 	query := `
-		SELECT id, title, description, content, resource_type, url, author, tags, 
+		SELECT id, title, description, content, resource_type, url, author, 
+			   COALESCE(tags, '{}') as tags,
 			   target_audience, estimated_read_time, is_featured, is_active, view_count,
 			   created_at, updated_at
 		FROM resources
@@ -161,6 +196,8 @@ func (s *store) GetResourceByID(ctx context.Context, resourceID string) (*Resour
 	`
 
 	var resource Resource
+	var tags []string
+
 	err := s.db.QueryRow(ctx, query, resourceID).Scan(
 		&resource.ID,
 		&resource.Title,
@@ -169,7 +206,7 @@ func (s *store) GetResourceByID(ctx context.Context, resourceID string) (*Resour
 		&resource.ResourceType,
 		&resource.URL,
 		&resource.Author,
-		pq.Array(&resource.Tags),
+		&tags,
 		&resource.TargetAudience,
 		&resource.EstimatedReadTime,
 		&resource.IsFeatured,
@@ -186,13 +223,20 @@ func (s *store) GetResourceByID(ctx context.Context, resourceID string) (*Resour
 		return nil, fmt.Errorf("failed to get resource: %w", err)
 	}
 
+	if tags == nil {
+		resource.Tags = []string{}
+	} else {
+		resource.Tags = tags
+	}
+
 	return &resource, nil
 }
 
-// GetFeaturedResources retrieves featured resources - FIXED
+// GetFeaturedResources retrieves featured resources
 func (s *store) GetFeaturedResources(ctx context.Context, limit int) ([]Resource, error) {
 	query := `
-		SELECT id, title, description, content, resource_type, url, author, tags,
+		SELECT id, title, description, content, resource_type, url, author, 
+			   COALESCE(tags, '{}') as tags,
 			   target_audience, estimated_read_time, is_featured, is_active, view_count,
 			   created_at, updated_at
 		FROM resources
@@ -210,6 +254,7 @@ func (s *store) GetFeaturedResources(ctx context.Context, limit int) ([]Resource
 	var resources []Resource
 	for rows.Next() {
 		var resource Resource
+		var tags []string
 
 		err = rows.Scan(
 			&resource.ID,
@@ -219,7 +264,7 @@ func (s *store) GetFeaturedResources(ctx context.Context, limit int) ([]Resource
 			&resource.ResourceType,
 			&resource.URL,
 			&resource.Author,
-			pq.Array(&resource.Tags), // Use pq.Array for proper array scanning
+			&tags,
 			&resource.TargetAudience,
 			&resource.EstimatedReadTime,
 			&resource.IsFeatured,
@@ -232,6 +277,11 @@ func (s *store) GetFeaturedResources(ctx context.Context, limit int) ([]Resource
 			return nil, fmt.Errorf("failed to scan resource: %w", err)
 		}
 
+		if tags == nil {
+			resource.Tags = []string{}
+		} else {
+			resource.Tags = tags
+		}
 		resources = append(resources, resource)
 	}
 
@@ -361,12 +411,12 @@ func (s *store) GetResourceStats(ctx context.Context) (*ResourceStats, error) {
 		resourcesByAudience[audience] = count
 	}
 
-	// Get popular tags
+	// Get popular tags - handle NULL arrays properly
 	var popularTags []TagCount
 	rows, err = s.db.Query(ctx, `
-		SELECT unnest(tags) as tag, COUNT(*) as count
+		SELECT unnest(COALESCE(tags, '{}')) as tag, COUNT(*) as count
 		FROM resources 
-		WHERE is_active = true AND tags IS NOT NULL
+		WHERE is_active = true AND tags IS NOT NULL AND array_length(tags, 1) > 0
 		GROUP BY tag
 		ORDER BY count DESC
 		LIMIT 10
@@ -398,7 +448,8 @@ func (s *store) GetResourceStats(ctx context.Context) (*ResourceStats, error) {
 // GetPopularResources retrieves popular resources by view count
 func (s *store) GetPopularResources(ctx context.Context, limit int) ([]Resource, error) {
 	query := `
-		SELECT id, title, description, content, resource_type, url, author, tags, 
+		SELECT id, title, description, content, resource_type, url, author, 
+			   COALESCE(tags, '{}') as tags,
 			   target_audience, estimated_read_time, is_featured, is_active, view_count,
 			   created_at, updated_at
 		FROM resources
@@ -416,6 +467,8 @@ func (s *store) GetPopularResources(ctx context.Context, limit int) ([]Resource,
 	var resources []Resource
 	for rows.Next() {
 		var resource Resource
+		var tags []string
+
 		err := rows.Scan(
 			&resource.ID,
 			&resource.Title,
@@ -424,7 +477,7 @@ func (s *store) GetPopularResources(ctx context.Context, limit int) ([]Resource,
 			&resource.ResourceType,
 			&resource.URL,
 			&resource.Author,
-			pq.Array(&resource.Tags),
+			&tags,
 			&resource.TargetAudience,
 			&resource.EstimatedReadTime,
 			&resource.IsFeatured,
@@ -437,6 +490,11 @@ func (s *store) GetPopularResources(ctx context.Context, limit int) ([]Resource,
 			return nil, fmt.Errorf("failed to scan resource: %w", err)
 		}
 
+		if tags == nil {
+			resource.Tags = []string{}
+		} else {
+			resource.Tags = tags
+		}
 		resources = append(resources, resource)
 	}
 
@@ -452,17 +510,26 @@ func (s *store) CreateResource(ctx context.Context, req *CreateResourceRequest) 
 	resourceID := uuid.New()
 	now := time.Now()
 
+	// Ensure tags is not nil
+	tags := req.Tags
+	if tags == nil {
+		tags = []string{}
+	}
+
 	query := `
 		INSERT INTO resources (id, title, description, content, resource_type, url, author, 
 							  tags, target_audience, estimated_read_time, is_featured, 
 							  is_active, view_count, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-		RETURNING id, title, description, content, resource_type, url, author, tags, 
+		RETURNING id, title, description, content, resource_type, url, author, 
+				  COALESCE(tags, '{}') as tags,
 				  target_audience, estimated_read_time, is_featured, is_active, view_count,
 				  created_at, updated_at
 	`
 
 	var resource Resource
+	var returnedTags []string
+
 	err := s.db.QueryRow(ctx, query,
 		resourceID,
 		req.Title,
@@ -471,7 +538,7 @@ func (s *store) CreateResource(ctx context.Context, req *CreateResourceRequest) 
 		req.ResourceType,
 		req.URL,
 		req.Author,
-		pq.Array(req.Tags),
+		tags, // Use pgx native array support
 		req.TargetAudience,
 		req.EstimatedReadTime,
 		req.IsFeatured,
@@ -487,7 +554,7 @@ func (s *store) CreateResource(ctx context.Context, req *CreateResourceRequest) 
 		&resource.ResourceType,
 		&resource.URL,
 		&resource.Author,
-		pq.Array(&resource.Tags),
+		&returnedTags,
 		&resource.TargetAudience,
 		&resource.EstimatedReadTime,
 		&resource.IsFeatured,
@@ -499,6 +566,12 @@ func (s *store) CreateResource(ctx context.Context, req *CreateResourceRequest) 
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create resource: %w", err)
+	}
+
+	if returnedTags == nil {
+		resource.Tags = []string{}
+	} else {
+		resource.Tags = returnedTags
 	}
 
 	return &resource, nil
@@ -548,7 +621,7 @@ func (s *store) UpdateResource(ctx context.Context, resourceID string, req *Upda
 
 	if req.Tags != nil {
 		setParts = append(setParts, fmt.Sprintf("tags = $%d", argIndex))
-		args = append(args, pq.Array(req.Tags))
+		args = append(args, req.Tags) // Use pgx native array support
 		argIndex++
 	}
 
@@ -584,7 +657,8 @@ func (s *store) UpdateResource(ctx context.Context, resourceID string, req *Upda
 		UPDATE resources 
 		SET %s
 		WHERE id = $%d AND is_active = true
-		RETURNING id, title, description, content, resource_type, url, author, tags, 
+		RETURNING id, title, description, content, resource_type, url, author, 
+				  COALESCE(tags, '{}') as tags,
 				  target_audience, estimated_read_time, is_featured, is_active, view_count,
 				  created_at, updated_at
 	`, strings.Join(setParts, ", "), argIndex)
@@ -592,6 +666,8 @@ func (s *store) UpdateResource(ctx context.Context, resourceID string, req *Upda
 	args = append(args, resourceID)
 
 	var resource Resource
+	var tags []string
+
 	err := s.db.QueryRow(ctx, query, args...).Scan(
 		&resource.ID,
 		&resource.Title,
@@ -600,7 +676,7 @@ func (s *store) UpdateResource(ctx context.Context, resourceID string, req *Upda
 		&resource.ResourceType,
 		&resource.URL,
 		&resource.Author,
-		pq.Array(&resource.Tags),
+		&tags,
 		&resource.TargetAudience,
 		&resource.EstimatedReadTime,
 		&resource.IsFeatured,
@@ -615,6 +691,12 @@ func (s *store) UpdateResource(ctx context.Context, resourceID string, req *Upda
 			return nil, fmt.Errorf("resource not found")
 		}
 		return nil, fmt.Errorf("failed to update resource: %w", err)
+	}
+
+	if tags == nil {
+		resource.Tags = []string{}
+	} else {
+		resource.Tags = tags
 	}
 
 	return &resource, nil

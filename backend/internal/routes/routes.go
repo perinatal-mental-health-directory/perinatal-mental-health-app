@@ -91,8 +91,7 @@ func Register(e *echo.Echo, db *pgxpool.Pool, cfg *config.Config) {
 
 	// Featured services endpoint
 	v1.GET("/services/featured", func(c echo.Context) error {
-		// Get limit from query param, default to 6
-		limit := 3
+		limit := 2
 		if l := c.QueryParam("limit"); l != "" {
 			if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 20 {
 				limit = parsed
