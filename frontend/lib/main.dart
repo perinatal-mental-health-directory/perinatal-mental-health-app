@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:perinatal_app/features/profile/profile.dart';
 import 'package:perinatal_app/features/resources/resources_list.dart';
+import 'package:perinatal_app/features/support_groups/support_groups_list.dart';
 import 'package:provider/provider.dart';
 import 'features/dashboard/dashboard.dart';
 import 'features/splash/splash_screen.dart';
@@ -12,6 +13,7 @@ import 'features/services/services_provider.dart';
 import 'features/profile/profile_provider.dart';
 import 'features/profile/privacy_provider.dart';
 import 'features/resources/resources_provider.dart';
+import 'features/support_groups/support_groups_provider.dart';
 
 void main() {
   runApp(const MyApp());
@@ -30,6 +32,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProfileProvider()),
         ChangeNotifierProvider(create: (_) => PrivacyProvider()),
         ChangeNotifierProvider(create: (_) => ResourcesProvider()),
+        ChangeNotifierProvider(create: (_) => SupportGroupsProvider()),
       ],
       child: MaterialApp(
         title: 'Perinatal Mental Health App',
@@ -44,6 +47,7 @@ class MyApp extends StatelessWidget {
           '/dashboard': (context) => const DashboardScreen(),
           '/services': (context) => const FindServicesScreen(),
           '/resources': (context) => const ResourcesListScreen(),
+          '/support-groups': (context) => const SupportGroupsListScreen(),
           '/profile': (context) => const ProfileScreen(),
         },
       ),
