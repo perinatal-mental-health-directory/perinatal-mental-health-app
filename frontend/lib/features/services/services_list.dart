@@ -533,10 +533,7 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
                     Navigator.pushReplacementNamed(context, '/dashboard');
                     break;
                   case 1:
-                  // TODO: Navigate to resources
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Resources coming soon!')),
-                    );
+                    Navigator.pushReplacementNamed(context, '/resources');
                     break;
                   case 2:
                   // Already on Services screen

@@ -77,6 +77,7 @@ CREATE TABLE support_groups (
                                 category VARCHAR(100) NOT NULL,
                                 platform VARCHAR(100) NOT NULL,
                                 doctor_info TEXT,
+                                url VARCHAR(255),
                                 guidelines TEXT,
                                 is_active BOOLEAN DEFAULT true,
                                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
