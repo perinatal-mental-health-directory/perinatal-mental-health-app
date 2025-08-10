@@ -64,7 +64,11 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
             child: RefreshIndicator(
               onRefresh: () async {
                 final servicesProvider = Provider.of<ServicesProvider>(context, listen: false);
-                await servicesProvider.loadFeaturedServices();
+                final resourcesProvider = Provider.of<ResourcesProvider>(context, listen: false);
+                await Future.wait([
+                  servicesProvider.loadFeaturedServices(),
+                  resourcesProvider.loadFeaturedResources(),
+                ]);
               },
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -85,6 +89,15 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
                     }),
                     const SizedBox(height: 8),
                     _featuredServicesSection(),
+                    const SizedBox(height: 24),
+                    _sectionTitleWithLink('Featured Resources', onViewAll: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ResourcesListScreen()),
+                      );
+                    }),
+                    const SizedBox(height: 8),
+                    _featuredResourcesSection(),
                     const SizedBox(height: 12),
                   ],
                 ),
@@ -684,7 +697,7 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
         }
 
         return Column(
-          children: resourcesProvider.featuredResources.take(3).map((resource) {
+          children: resourcesProvider.featuredResources.take(2).map((resource) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: _featuredResourceTile(resource),

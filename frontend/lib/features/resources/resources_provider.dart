@@ -54,7 +54,7 @@ class ResourcesProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await ApiService.getFeaturedResources(limit: 3);
+      final response = await ApiService.getFeaturedResources(limit: 2); // Changed to 2 as requested
       _featuredResources = response.map((json) => ResourceModel.fromJson(json)).toList();
       print('Loaded ${_featuredResources.length} featured resources');
     } catch (e) {
@@ -181,7 +181,7 @@ class ResourcesProvider with ChangeNotifier {
   }
 
   // Load specific resource details
-  Future<void> loadResourceDetails(int resourceId) async {
+  Future<void> loadResourceDetails(String resourceId) async {
     try {
       final response = await ApiService.getResource(resourceId);
       _selectedResource = ResourceModel.fromJson(response);
@@ -194,14 +194,12 @@ class ResourcesProvider with ChangeNotifier {
   }
 
   // Increment view count
-  Future<void> incrementViewCount(int resourceId) async {
+  Future<void> incrementViewCount(String resourceId) async {
     try {
       await ApiService.incrementResourceViewCount(resourceId);
       // Update local count if resource is in our list
       final index = _resources.indexWhere((r) => r.id == resourceId);
       if (index != -1) {
-        // This is a bit tricky since the model is immutable
-        // We could reload the specific resource or just increment locally
         print('View count incremented for resource: $resourceId');
       }
     } catch (e) {

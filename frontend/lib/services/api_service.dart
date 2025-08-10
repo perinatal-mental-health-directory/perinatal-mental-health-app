@@ -1015,7 +1015,7 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> getResource(int resourceId) async {
+  static Future<Map<String, dynamic>> getResource(String resourceId) async {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/resources/$resourceId'),
@@ -1178,7 +1178,7 @@ class ApiService {
     }
   }
 
-  static Future<void> incrementResourceViewCount(int resourceId) async {
+  static Future<void> incrementResourceViewCount(String resourceId) async {
     try {
       final headers = await getHeaders();
       final response = await http.post(
