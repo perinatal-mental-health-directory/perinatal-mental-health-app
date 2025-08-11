@@ -17,7 +17,7 @@ class SubmitFeedbackScreen extends StatefulWidget {
 class _SubmitFeedbackScreenState extends State<SubmitFeedbackScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isAnonymous = false;
-  int _selectedRating = 2; // Default to "Neutral" (index 2)
+  int _selectedRating = 4;
   String _selectedCategory = 'general';
   final TextEditingController _feedbackController = TextEditingController();
   bool _isLoading = false;
@@ -118,71 +118,8 @@ class _SubmitFeedbackScreenState extends State<SubmitFeedbackScreen> {
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: kPrimaryBlue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: kPrimaryBlue,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.feedback,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'We Value Your Feedback',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              color: kDarkGreyText,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Help us improve our app and services',
-                            style: TextStyle(
-                              color: kDarkGreyText,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
 
-              const SizedBox(height: 24),
-
-              // Anonymous Feedback Toggle
-              _buildCard(
-                title: 'Submit anonymously',
-                subtitle: 'Your feedback will be sent without your personal information',
-                trailing: Switch(
-                  activeColor: kPrimaryBlue,
-                  value: _isAnonymous,
-                  onChanged: (value) {
-                    setState(() => _isAnonymous = value);
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
 
               // Category Selection
               _buildCard(
@@ -372,46 +309,6 @@ class _SubmitFeedbackScreenState extends State<SubmitFeedbackScreen> {
               ),
 
               const SizedBox(height: 16),
-
-              // Guidelines
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.amber[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.amber[200]!),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.lightbulb_outline, color: Colors.amber[700], size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Feedback Guidelines',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.amber[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '• Be specific about issues or suggestions\n'
-                          '• Include steps to reproduce any problems\n'
-                          '• Mention which device/browser you\'re using\n'
-                          '• Keep feedback constructive and respectful',
-                      style: TextStyle(
-                        color: Colors.amber[700],
-                        fontSize: 12,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
         ),

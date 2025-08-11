@@ -191,12 +191,6 @@ func (h *handler) UpdateReferral(c echo.Context) error {
 		})
 	}
 
-	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": err.Error(),
-		})
-	}
-
 	referral, err := h.service.UpdateReferral(c.Request().Context(), referralID, userID, &req)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
@@ -230,12 +224,6 @@ func (h *handler) UpdateReferralStatus(c echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "Invalid request format",
-		})
-	}
-
-	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": err.Error(),
 		})
 	}
 

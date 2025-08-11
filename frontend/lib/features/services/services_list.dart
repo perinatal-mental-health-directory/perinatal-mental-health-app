@@ -5,8 +5,8 @@ import 'package:provider/provider.dart';
 import '../../main.dart';
 import '../profile/profile.dart';
 import '../support_groups/support_groups_list.dart';
-import '../referrals/referral_tag_widget.dart'; // Add this import
-import '../referrals/referral_provider.dart'; // Add this import
+import '../notifications/notifications_screen.dart'; // Add this import
+import '../referrals/referral_provider.dart'; // Keep for notification count
 import 'services_provider.dart';
 import 'services_model.dart';
 import 'service_detail.dart';
@@ -38,7 +38,7 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
       final servicesProvider = Provider.of<ServicesProvider>(context, listen: false);
       servicesProvider.loadServices(refresh: true);
 
-      // Load user's received referrals to show NHS tags
+      // Load user's received referrals for notification count only
       final referralProvider = Provider.of<ReferralProvider>(context, listen: false);
       referralProvider.loadReceivedReferrals(refresh: true);
     });
@@ -108,10 +108,48 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
         ),
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none, color: kDarkGreyText),
-            iconSize: 26,
-            onPressed: () {},
+          Consumer<ReferralProvider>(
+            builder: (context, referralProvider, _) {
+              final pendingCount = referralProvider.pendingReceivedCount;
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications_none, color: kDarkGreyText),
+                    iconSize: 27,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                      );
+                    },
+                  ),
+                  if (pendingCount > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 14,
+                          minHeight: 14,
+                        ),
+                        child: Text(
+                          '$pendingCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
           Container(
             margin: const EdgeInsets.only(right: 8.0),
@@ -305,7 +343,7 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
                       }
 
                       final service = servicesProvider.services[index];
-                      return _buildServiceTileWithReferral(service);
+                      return _buildServiceTile(service);
                     },
                   ),
                 );
@@ -337,22 +375,6 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
       side: BorderSide(
         color: isSelected ? kPrimaryBlue : Colors.grey[300]!,
       ),
-    );
-  }
-
-  // Updated method with referral integration
-  Widget _buildServiceTileWithReferral(ServiceModel service) {
-    return Column(
-      children: [
-        // NHS Referral Tag (if exists)
-        ReferralTagWidget(
-          itemId: service.id,
-          itemType: 'service',
-          showDetails: true,
-        ),
-        // Original Service Tile
-        _buildServiceTile(service),
-      ],
     );
   }
 
@@ -400,25 +422,12 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              service.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                          // Compact NHS Referral Tag in header
-                          ReferralTagWidget(
-                            itemId: service.id,
-                            itemType: 'service',
-                            showDetails: false,
-                            compact: true,
-                          ),
-                        ],
+                      Text(
+                        service.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
