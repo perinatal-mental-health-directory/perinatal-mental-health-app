@@ -353,16 +353,8 @@ func validateReferralRequest(req *CreateReferralRequest) error {
 	}
 
 	// Validate item ID format based on type
-	if req.ReferralType == "support_group" {
-		// Support groups use integer IDs
-		if !isValidInteger(req.ItemID) {
-			return fmt.Errorf("invalid support group ID format")
-		}
-	} else {
-		// Services and resources use UUID
-		if !isValidUUID(req.ItemID) {
-			return fmt.Errorf("invalid item ID UUID format")
-		}
+	if !isValidUUID(req.ItemID) {
+		return fmt.Errorf("invalid item ID UUID format")
 	}
 
 	return nil

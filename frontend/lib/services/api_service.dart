@@ -1350,7 +1350,7 @@ class ApiService {
     }
   }
 
-  static Future<void> joinSupportGroup(int groupId) async {
+  static Future<void> joinSupportGroup(String groupId) async {
     try {
       final headers = await getHeaders();
       final response = await http.post(
@@ -1386,7 +1386,7 @@ class ApiService {
     }
   }
 
-  static Future<void> leaveSupportGroup(int groupId) async {
+  static Future<void> leaveSupportGroup(String groupId) async {
     try {
       final headers = await getHeaders();
       final response = await http.delete(
@@ -1420,7 +1420,7 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> getSupportGroupMembers(int groupId) async {
+  static Future<Map<String, dynamic>> getSupportGroupMembers(String groupId) async {
     try {
       final headers = await getHeaders();
       final response = await http.get(

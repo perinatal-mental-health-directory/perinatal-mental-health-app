@@ -63,9 +63,8 @@ func (h *handler) ListSupportGroups(c echo.Context) error {
 
 // GetSupportGroup retrieves a support group by ID
 func (h *handler) GetSupportGroup(c echo.Context) error {
-	groupIDStr := c.Param("id")
-	groupID, err := strconv.Atoi(groupIDStr)
-	if err != nil {
+	groupID := c.Param("id") // Remove strconv.Atoi conversion
+	if groupID == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "Invalid group ID",
 		})
@@ -234,6 +233,7 @@ func (h *handler) JoinGroup(c echo.Context) error {
 }
 
 // LeaveGroup removes a user from a support group
+// LeaveGroup removes a user from a support group
 func (h *handler) LeaveGroup(c echo.Context) error {
 	userID := getUserIDFromContext(c)
 	if userID == "" {
@@ -242,15 +242,14 @@ func (h *handler) LeaveGroup(c echo.Context) error {
 		})
 	}
 
-	groupIDStr := c.Param("id")
-	groupID, err := strconv.Atoi(groupIDStr)
-	if err != nil {
+	groupID := c.Param("id")
+	if groupID == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "Invalid group ID",
 		})
 	}
 
-	err = h.service.LeaveGroup(c.Request().Context(), userID, groupID)
+	err := h.service.LeaveGroup(c.Request().Context(), userID, groupID)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": err.Error(),
@@ -264,9 +263,8 @@ func (h *handler) LeaveGroup(c echo.Context) error {
 
 // GetGroupMembers retrieves all members of a support group
 func (h *handler) GetGroupMembers(c echo.Context) error {
-	groupIDStr := c.Param("id")
-	groupID, err := strconv.Atoi(groupIDStr)
-	if err != nil {
+	groupID := c.Param("id")
+	if groupID == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "Invalid group ID",
 		})
@@ -324,9 +322,8 @@ func (h *handler) CreateSupportGroup(c echo.Context) error {
 
 // UpdateSupportGroup updates a support group (admin only)
 func (h *handler) UpdateSupportGroup(c echo.Context) error {
-	groupIDStr := c.Param("id")
-	groupID, err := strconv.Atoi(groupIDStr)
-	if err != nil {
+	groupID := c.Param("id")
+	if groupID == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "Invalid group ID",
 		})
@@ -357,15 +354,14 @@ func (h *handler) UpdateSupportGroup(c echo.Context) error {
 
 // DeleteSupportGroup deletes a support group (admin only)
 func (h *handler) DeleteSupportGroup(c echo.Context) error {
-	groupIDStr := c.Param("id")
-	groupID, err := strconv.Atoi(groupIDStr)
-	if err != nil {
+	groupID := c.Param("id")
+	if groupID == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "Invalid group ID",
 		})
 	}
 
-	err = h.service.DeleteSupportGroup(c.Request().Context(), groupID)
+	err := h.service.DeleteSupportGroup(c.Request().Context(), groupID)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{
 			"error": err.Error(),
@@ -379,9 +375,8 @@ func (h *handler) DeleteSupportGroup(c echo.Context) error {
 
 // RemoveUserFromGroup removes a user from a group (admin only)
 func (h *handler) RemoveUserFromGroup(c echo.Context) error {
-	groupIDStr := c.Param("id")
-	groupID, err := strconv.Atoi(groupIDStr)
-	if err != nil {
+	groupID := c.Param("id")
+	if groupID == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "Invalid group ID",
 		})
@@ -394,7 +389,7 @@ func (h *handler) RemoveUserFromGroup(c echo.Context) error {
 		})
 	}
 
-	err = h.service.RemoveUserFromGroup(c.Request().Context(), userID, groupID)
+	err := h.service.RemoveUserFromGroup(c.Request().Context(), userID, groupID)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": err.Error(),
