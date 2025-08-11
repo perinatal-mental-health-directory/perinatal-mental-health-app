@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 
 class SupportGroupModel {
-  final int id;
+  final String id;
   final String name;
   final String description;
   final String category;
@@ -188,9 +188,9 @@ class SupportGroupModel {
 }
 
 class GroupMembership {
-  final int id;
+  final String id;
   final String userId;
-  final int groupId;
+  final String groupId;
   final DateTime joinedAt;
   final bool isActive;
   final String role;

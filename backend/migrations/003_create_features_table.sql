@@ -70,9 +70,8 @@ CREATE TABLE resources (
                            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create support_groups table
 CREATE TABLE support_groups (
-                                id SERIAL PRIMARY KEY,
+                                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                                 name VARCHAR(255) NOT NULL,
                                 description TEXT NOT NULL,
                                 category VARCHAR(50) NOT NULL CHECK (category IN ('postnatal', 'prenatal', 'anxiety', 'depression', 'partner_support', 'general')),
@@ -87,11 +86,10 @@ CREATE TABLE support_groups (
                                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create group_memberships table for tracking user memberships
 CREATE TABLE group_memberships (
-                                   id SERIAL PRIMARY KEY,
+                                   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                                    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                                   group_id INTEGER NOT NULL REFERENCES support_groups(id) ON DELETE CASCADE,
+                                   group_id UUID NOT NULL REFERENCES support_groups(id) ON DELETE CASCADE,
                                    joined_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                    is_active BOOLEAN DEFAULT true,
                                    role VARCHAR(20) NOT NULL DEFAULT 'member' CHECK (role IN ('member', 'moderator', 'admin')),

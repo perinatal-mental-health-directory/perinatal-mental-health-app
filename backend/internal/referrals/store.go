@@ -105,9 +105,9 @@ func (s *store) GetReferralWithDetails(ctx context.Context, referralID string) (
 		FROM referrals r
 		JOIN users referrer ON r.referred_by = referrer.id
 		JOIN users recipient ON r.referred_to = recipient.id
-		LEFT JOIN services s ON r.referral_type = 'service' AND (r.item_id ~* '^[0-9a-fA-F-]{36}$') AND r.item_id::uuid = s.id
-		LEFT JOIN resources res ON r.referral_type = 'resource' AND (r.item_id ~* '^[0-9a-fA-F-]{36}$') AND r.item_id::uuid = res.id
-		LEFT JOIN support_groups sg ON r.referral_type = 'support_group' AND r.item_id = sg.id::text
+		LEFT JOIN services s ON r.referral_type = 'service' AND r.item_id::uuid = s.id
+		LEFT JOIN resources res ON r.referral_type = 'resource' AND r.item_id::uuid = res.id
+		LEFT JOIN support_groups sg ON r.referral_type = 'support_group' AND r.item_id::uuid = sg.id
 		WHERE r.id = $1
 	`
 
@@ -192,9 +192,9 @@ func (s *store) ListReferralsSent(ctx context.Context, referredBy string, req *L
 	FROM referrals r
 	JOIN users referrer ON r.referred_by = referrer.id
 	JOIN users recipient ON r.referred_to = recipient.id
-	LEFT JOIN services s ON r.referral_type = 'service' AND r.item_id ~* '^[0-9a-fA-F-]{36}$' AND r.item_id::uuid = s.id
-	LEFT JOIN resources res ON r.referral_type = 'resource' AND r.item_id ~* '^[0-9a-fA-F-]{36}$' AND r.item_id::uuid = res.id
-	LEFT JOIN support_groups sg ON r.referral_type = 'support_group' AND r.item_id = sg.id::text
+	LEFT JOIN services s ON r.referral_type = 'service' AND r.item_id::uuid = s.id
+	LEFT JOIN resources res ON r.referral_type = 'resource' AND r.item_id::uuid = res.id
+	LEFT JOIN support_groups sg ON r.referral_type = 'support_group' AND r.item_id::uuid = sg.id
 	%s
 	ORDER BY r.created_at DESC
 	LIMIT $%d OFFSET $%d
@@ -301,9 +301,9 @@ func (s *store) ListReferralsReceived(ctx context.Context, referredTo string, re
 		FROM referrals r
 		JOIN users referrer ON r.referred_by = referrer.id
 		JOIN users recipient ON r.referred_to = recipient.id
-		LEFT JOIN services s ON r.referral_type = 'service' AND r.item_id = s.id
-		LEFT JOIN resources res ON r.referral_type = 'resource' AND r.item_id = res.id
-		LEFT JOIN support_groups sg ON r.referral_type = 'support_group' AND r.item_id = sg.id::text
+		LEFT JOIN services s ON r.referral_type = 'service' AND r.item_id::uuid = s.id
+		LEFT JOIN resources res ON r.referral_type = 'resource' AND r.item_id::uuid = res.id
+		LEFT JOIN support_groups sg ON r.referral_type = 'support_group' AND r.item_id::uuid = sg.id
 		%s
 		ORDER BY r.created_at DESC
 		LIMIT $%d OFFSET $%d
@@ -623,9 +623,9 @@ func (s *store) GetReferralStats(ctx context.Context, userID string) (*ReferralS
 		FROM referrals r
 		JOIN users referrer ON r.referred_by = referrer.id
 		JOIN users recipient ON r.referred_to = recipient.id
-		LEFT JOIN services s ON r.referral_type = 'service' AND r.item_id = s.id
-		LEFT JOIN resources res ON r.referral_type = 'resource' AND r.item_id = res.id
-		LEFT JOIN support_groups sg ON r.referral_type = 'support_group' AND r.item_id = sg.id::text
+		LEFT JOIN services s ON r.referral_type = 'service' AND r.item_id::uuid = s.id
+		LEFT JOIN resources res ON r.referral_type = 'resource' AND r.item_id::uuid = res.id
+		LEFT JOIN support_groups sg ON r.referral_type = 'support_group' AND r.item_id::uuid = sg.id
 		WHERE r.referred_by = $1
 		ORDER BY r.created_at DESC
 		LIMIT 5
@@ -783,8 +783,7 @@ func (s *store) ValidateItemExists(ctx context.Context, itemID string, itemType 
 	case "resource":
 		query = `SELECT EXISTS(SELECT 1 FROM resources WHERE id = $1 AND is_active = true)`
 	case "support_group":
-		// Support groups use integer IDs, so we need to convert
-		query = `SELECT EXISTS(SELECT 1 FROM support_groups WHERE id = $1::integer AND is_active = true)`
+		query = `SELECT EXISTS(SELECT 1 FROM support_groups WHERE id = $1 AND is_active = true)`
 	default:
 		return fmt.Errorf("invalid referral type: %s", itemType)
 	}

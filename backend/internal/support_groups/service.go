@@ -4,6 +4,7 @@ package support_groups
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
 	"strings"
 )
 
@@ -40,8 +41,8 @@ func (s *service) ListSupportGroups(ctx context.Context, page, pageSize int, cat
 }
 
 // GetSupportGroup retrieves a support group by ID
-func (s *service) GetSupportGroup(ctx context.Context, groupID int) (*SupportGroup, error) {
-	if groupID <= 0 {
+func (s *service) GetSupportGroup(ctx context.Context, groupID string) (*SupportGroup, error) {
+	if !isValidUUID(groupID) { // Add UUID validation
 		return nil, fmt.Errorf("invalid group ID")
 	}
 
@@ -112,11 +113,11 @@ func (s *service) GetUserGroups(ctx context.Context, userID string) ([]SupportGr
 }
 
 // JoinGroup adds a user to a support group
-func (s *service) JoinGroup(ctx context.Context, userID string, groupID int) error {
+func (s *service) JoinGroup(ctx context.Context, userID string, groupID string) error {
 	if userID == "" {
 		return fmt.Errorf("invalid user ID")
 	}
-	if groupID <= 0 {
+	if !isValidUUID(groupID) {
 		return fmt.Errorf("invalid group ID")
 	}
 
@@ -163,11 +164,11 @@ func (s *service) JoinGroup(ctx context.Context, userID string, groupID int) err
 }
 
 // LeaveGroup removes a user from a support group
-func (s *service) LeaveGroup(ctx context.Context, userID string, groupID int) error {
+func (s *service) LeaveGroup(ctx context.Context, userID string, groupID string) error {
 	if userID == "" {
 		return fmt.Errorf("invalid user ID")
 	}
-	if groupID <= 0 {
+	if !isValidUUID(groupID) {
 		return fmt.Errorf("invalid group ID")
 	}
 
@@ -185,8 +186,8 @@ func (s *service) LeaveGroup(ctx context.Context, userID string, groupID int) er
 }
 
 // GetGroupMembers retrieves all members of a support group
-func (s *service) GetGroupMembers(ctx context.Context, groupID int) ([]GroupMembership, error) {
-	if groupID <= 0 {
+func (s *service) GetGroupMembers(ctx context.Context, groupID string) ([]GroupMembership, error) {
+	if !isValidUUID(groupID) {
 		return nil, fmt.Errorf("invalid group ID")
 	}
 
@@ -200,11 +201,11 @@ func (s *service) GetGroupMembers(ctx context.Context, groupID int) ([]GroupMemb
 }
 
 // IsUserMember checks if a user is a member of a support group
-func (s *service) IsUserMember(ctx context.Context, userID string, groupID int) (bool, error) {
+func (s *service) IsUserMember(ctx context.Context, userID string, groupID string) (bool, error) {
 	if userID == "" {
 		return false, fmt.Errorf("invalid user ID")
 	}
-	if groupID <= 0 {
+	if !isValidUUID(groupID) {
 		return false, fmt.Errorf("invalid group ID")
 	}
 
@@ -237,8 +238,8 @@ func (s *service) CreateSupportGroup(ctx context.Context, req *CreateSupportGrou
 }
 
 // UpdateSupportGroup updates a support group (admin only)
-func (s *service) UpdateSupportGroup(ctx context.Context, groupID int, req *UpdateSupportGroupRequest) (*SupportGroup, error) {
-	if groupID <= 0 {
+func (s *service) UpdateSupportGroup(ctx context.Context, groupID string, req *UpdateSupportGroupRequest) (*SupportGroup, error) {
+	if !isValidUUID(groupID) {
 		return nil, fmt.Errorf("invalid group ID")
 	}
 
@@ -256,8 +257,8 @@ func (s *service) UpdateSupportGroup(ctx context.Context, groupID int, req *Upda
 }
 
 // DeleteSupportGroup soft deletes a support group (admin only)
-func (s *service) DeleteSupportGroup(ctx context.Context, groupID int) error {
-	if groupID <= 0 {
+func (s *service) DeleteSupportGroup(ctx context.Context, groupID string) error {
+	if !isValidUUID(groupID) {
 		return fmt.Errorf("invalid group ID")
 	}
 
@@ -265,11 +266,11 @@ func (s *service) DeleteSupportGroup(ctx context.Context, groupID int) error {
 }
 
 // RemoveUserFromGroup removes a user from a group (admin only)
-func (s *service) RemoveUserFromGroup(ctx context.Context, userID string, groupID int) error {
+func (s *service) RemoveUserFromGroup(ctx context.Context, userID string, groupID string) error {
 	if userID == "" {
 		return fmt.Errorf("invalid user ID")
 	}
-	if groupID <= 0 {
+	if !isValidUUID(groupID) {
 		return fmt.Errorf("invalid group ID")
 	}
 
@@ -345,4 +346,9 @@ func validateSupportGroupRequest(req *CreateSupportGroupRequest) error {
 	}
 
 	return nil
+}
+
+func isValidUUID(u string) bool {
+	_, err := uuid.Parse(u)
+	return err == nil
 }

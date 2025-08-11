@@ -7,7 +7,7 @@ import (
 
 // SupportGroup represents a support group
 type SupportGroup struct {
-	ID          int       `json:"id" db:"id"`
+	ID          string    `json:"id" db:"id"`
 	Name        string    `json:"name" db:"name"`
 	Description string    `json:"description" db:"description"`
 	Category    string    `json:"category" db:"category"`
@@ -80,7 +80,7 @@ type ListSupportGroupsResponse struct {
 
 // GroupMembership represents user membership in support groups
 type GroupMembership struct {
-	ID        int       `json:"id" db:"id"`
+	ID        string    `json:"id" db:"id"`
 	UserID    string    `json:"user_id" db:"user_id"`
 	GroupID   int       `json:"group_id" db:"group_id"`
 	JoinedAt  time.Time `json:"joined_at" db:"joined_at"`
@@ -92,7 +92,7 @@ type GroupMembership struct {
 
 // JoinGroupRequest represents the request to join a group
 type JoinGroupRequest struct {
-	GroupID int `json:"group_id" validate:"required"`
+	GroupID string `json:"group_id" validate:"required"`
 }
 
 // SupportGroupStats represents support group statistics

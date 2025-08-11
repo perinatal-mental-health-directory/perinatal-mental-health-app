@@ -182,7 +182,7 @@ class SupportGroupsProvider with ChangeNotifier {
   }
 
   // Join a support group
-  Future<bool> joinGroup(int groupId) async {
+  Future<bool> joinGroup(String groupId) async {
     try {
       await ApiService.joinSupportGroup(groupId);
       print('Successfully joined group $groupId');
@@ -203,7 +203,7 @@ class SupportGroupsProvider with ChangeNotifier {
   }
 
   // Leave a support group
-  Future<bool> leaveGroup(int groupId) async {
+  Future<bool> leaveGroup(String groupId) async {
     try {
       await ApiService.leaveSupportGroup(groupId);
       print('Successfully left group $groupId');
@@ -224,7 +224,7 @@ class SupportGroupsProvider with ChangeNotifier {
   }
 
   // Load group members
-  Future<void> loadGroupMembers(int groupId) async {
+  Future<void> loadGroupMembers(String groupId) async {
     _isMembersLoading = true;
     notifyListeners();
 
@@ -244,7 +244,7 @@ class SupportGroupsProvider with ChangeNotifier {
   }
 
   // Check if user is member of a group
-  bool isUserMemberOfGroup(int groupId) {
+  bool isUserMemberOfGroup(String groupId) {
     return _userGroups.any((group) => group.id == groupId);
   }
 
@@ -285,7 +285,7 @@ class SupportGroupsProvider with ChangeNotifier {
   }
 
   // Get member count for a group
-  int getMemberCount(int groupId) {
+  int getMemberCount(String groupId) {
     if (_selectedGroup?.id == groupId) {
       return _groupMembers.where((member) => member.isActive).length;
     }
@@ -298,9 +298,9 @@ class SupportGroupsProvider with ChangeNotifier {
       final membership = _groupMembers.firstWhere(
             (member) => member.userId == userId && member.isActive,
         orElse: () => GroupMembership(
-          id: 0,
+          id: "",
           userId: '',
-          groupId: 0,
+          groupId: "",
           joinedAt: DateTime.now(),
           isActive: false,
           role: '',

@@ -125,7 +125,7 @@ func (s *store) ListSupportGroups(ctx context.Context, page, pageSize int, categ
 }
 
 // GetSupportGroupByID retrieves a support group by ID
-func (s *store) GetSupportGroupByID(ctx context.Context, groupID int) (*SupportGroup, error) {
+func (s *store) GetSupportGroupByID(ctx context.Context, groupID string) (*SupportGroup, error) {
 	query := `
 		SELECT id, name, description, category, platform, doctor_info, url, guidelines,
 			   meeting_time, max_members, is_active, created_at, updated_at
@@ -311,7 +311,7 @@ func (s *store) GetUserGroups(ctx context.Context, userID string) ([]SupportGrou
 }
 
 // GetGroupMembers retrieves all members of a support group
-func (s *store) GetGroupMembers(ctx context.Context, groupID int) ([]GroupMembership, error) {
+func (s *store) GetGroupMembers(ctx context.Context, groupID string) ([]GroupMembership, error) {
 	query := `
 		SELECT id, user_id, group_id, joined_at, is_active, role, created_at, updated_at
 		FROM group_memberships
@@ -354,7 +354,7 @@ func (s *store) GetGroupMembers(ctx context.Context, groupID int) ([]GroupMember
 }
 
 // IsUserMember checks if a user is a member of a support group
-func (s *store) IsUserMember(ctx context.Context, userID string, groupID int) (bool, error) {
+func (s *store) IsUserMember(ctx context.Context, userID string, groupID string) (bool, error) {
 	query := `
 		SELECT EXISTS(
 			SELECT 1 FROM group_memberships 
@@ -372,7 +372,7 @@ func (s *store) IsUserMember(ctx context.Context, userID string, groupID int) (b
 }
 
 // JoinGroup adds a user to a support group
-func (s *store) JoinGroup(ctx context.Context, userID string, groupID int) error {
+func (s *store) JoinGroup(ctx context.Context, userID string, groupID string) error {
 	now := time.Now()
 
 	query := `
@@ -389,7 +389,7 @@ func (s *store) JoinGroup(ctx context.Context, userID string, groupID int) error
 }
 
 // LeaveGroup removes a user from a support group (soft delete)
-func (s *store) LeaveGroup(ctx context.Context, userID string, groupID int) error {
+func (s *store) LeaveGroup(ctx context.Context, userID string, groupID string) error {
 	query := `
 		UPDATE group_memberships 
 		SET is_active = false, updated_at = $1
@@ -409,7 +409,7 @@ func (s *store) LeaveGroup(ctx context.Context, userID string, groupID int) erro
 }
 
 // RemoveUserFromGroup removes a user from a group (admin action)
-func (s *store) RemoveUserFromGroup(ctx context.Context, userID string, groupID int) error {
+func (s *store) RemoveUserFromGroup(ctx context.Context, userID string, groupID string) error {
 	return s.LeaveGroup(ctx, userID, groupID) // Same implementation for now
 }
 
@@ -590,7 +590,7 @@ func (s *store) CreateSupportGroup(ctx context.Context, req *CreateSupportGroupR
 }
 
 // UpdateSupportGroup updates a support group (admin only)
-func (s *store) UpdateSupportGroup(ctx context.Context, groupID int, req *UpdateSupportGroupRequest) (*SupportGroup, error) {
+func (s *store) UpdateSupportGroup(ctx context.Context, groupID string, req *UpdateSupportGroupRequest) (*SupportGroup, error) {
 	var setParts []string
 	var args []interface{}
 	argIndex := 1
@@ -698,7 +698,7 @@ func (s *store) UpdateSupportGroup(ctx context.Context, groupID int, req *Update
 }
 
 // DeleteSupportGroup soft deletes a support group (admin only)
-func (s *store) DeleteSupportGroup(ctx context.Context, groupID int) error {
+func (s *store) DeleteSupportGroup(ctx context.Context, groupID string) error {
 	query := `
 		UPDATE support_groups 
 		SET is_active = false, updated_at = $1
