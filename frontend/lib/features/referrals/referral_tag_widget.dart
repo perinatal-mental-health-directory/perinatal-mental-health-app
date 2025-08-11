@@ -12,12 +12,14 @@ class ReferralTagWidget extends StatelessWidget {
   final String itemId;
   final String itemType; // 'service', 'resource', 'support_group'
   final bool showDetails;
+  final bool compact;
 
   const ReferralTagWidget({
     super.key,
     required this.itemId,
     required this.itemType,
     this.showDetails = false,
+    this.compact = true,
   });
 
   @override
@@ -36,12 +38,16 @@ class ReferralTagWidget extends StatelessWidget {
           return const SizedBox.shrink();
         }
 
-        return _buildReferralTag(referral, showDetails);
+        if (showDetails) {
+          return _buildDetailedReferralCard(referral);
+        }
+
+        return _buildCompactReferralTag(referral);
       },
     );
   }
 
-  Widget _buildReferralTag(ReferralModel referral, bool showDetails) {
+  Widget _buildCompactReferralTag(ReferralModel referral) {
     Color tagColor;
     String tagText;
     IconData tagIcon;
@@ -50,7 +56,7 @@ class ReferralTagWidget extends StatelessWidget {
       case 'pending':
         tagColor = Colors.orange;
         tagText = 'NHS Referred';
-        tagIcon = Icons.schedule;
+        tagIcon = Icons.medical_services;
         break;
       case 'accepted':
         tagColor = kActionGreen;
@@ -74,10 +80,6 @@ class ReferralTagWidget extends StatelessWidget {
       tagColor = Colors.red;
       tagText = 'URGENT NHS Referral';
       tagIcon = Icons.priority_high;
-    }
-
-    if (showDetails) {
-      return _buildDetailedReferralCard(referral, tagColor, tagText, tagIcon);
     }
 
     return Container(
@@ -115,7 +117,41 @@ class ReferralTagWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailedReferralCard(ReferralModel referral, Color tagColor, String tagText, IconData tagIcon) {
+  Widget _buildDetailedReferralCard(ReferralModel referral) {
+    Color tagColor;
+    String tagText;
+    IconData tagIcon;
+
+    switch (referral.status) {
+      case 'pending':
+        tagColor = Colors.orange;
+        tagText = 'NHS Referred';
+        tagIcon = Icons.medical_services;
+        break;
+      case 'accepted':
+        tagColor = kActionGreen;
+        tagText = 'NHS Referred';
+        tagIcon = Icons.check_circle;
+        break;
+      case 'viewed':
+        tagColor = kPrimaryBlue;
+        tagText = 'NHS Referred';
+        tagIcon = Icons.visibility;
+        break;
+      case 'declined':
+        return const SizedBox.shrink();
+      default:
+        tagColor = Colors.grey;
+        tagText = 'NHS Referred';
+        tagIcon = Icons.info;
+    }
+
+    if (referral.isUrgent) {
+      tagColor = Colors.red;
+      tagText = 'URGENT NHS Referral';
+      tagIcon = Icons.priority_high;
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
@@ -232,28 +268,36 @@ class ReferralTagWidget extends StatelessWidget {
               ),
               const Spacer(),
               if (referral.isPending) ...[
-                TextButton(
-                  onPressed: () => _updateReferralStatus(referral.id, 'declined'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  ),
-                  child: const Text(
-                    'Decline',
-                    style: TextStyle(fontSize: 10),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                TextButton(
-                  onPressed: () => _updateReferralStatus(referral.id, 'accepted'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: kActionGreen,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  ),
-                  child: const Text(
-                    'Accept',
-                    style: TextStyle(fontSize: 10),
-                  ),
+                Consumer<ReferralProvider>(
+                  builder: (context, provider, _) {
+                    return Row(
+                      children: [
+                        TextButton(
+                          onPressed: () => _updateReferralStatus(context, referral.id, 'declined'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          ),
+                          child: const Text(
+                            'Decline',
+                            style: TextStyle(fontSize: 10),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        TextButton(
+                          onPressed: () => _updateReferralStatus(context, referral.id, 'accepted'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: kActionGreen,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          ),
+                          child: const Text(
+                            'Accept',
+                            style: TextStyle(fontSize: 10),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ],
@@ -263,9 +307,31 @@ class ReferralTagWidget extends StatelessWidget {
     );
   }
 
-  Future<void> _updateReferralStatus(String referralId, String status) async {
-    // This would need to be implemented with proper context handling
-    // For now, this is a placeholder for the functionality
+  Future<void> _updateReferralStatus(BuildContext context, String referralId, String status) async {
+    final referralProvider = Provider.of<ReferralProvider>(context, listen: false);
+    final success = await referralProvider.updateReferralStatus(referralId, status);
+
+    if (success && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            status == 'accepted'
+                ? 'Referral accepted successfully'
+                : 'Referral declined',
+          ),
+          backgroundColor: status == 'accepted' ? kActionGreen : Colors.orange,
+        ),
+      );
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            referralProvider.error ?? 'Failed to update referral status',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   String _formatDate(DateTime date) {
@@ -287,7 +353,7 @@ class ReferralTagWidget extends StatelessWidget {
   }
 }
 
-// Usage example widget to show how to integrate into existing tiles
+// Wrapper widgets for easy integration
 class ServiceTileWithReferral extends StatelessWidget {
   final dynamic service; // ServiceModel
   final Widget originalTile;

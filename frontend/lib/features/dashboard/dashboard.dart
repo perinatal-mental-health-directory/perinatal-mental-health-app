@@ -1,3 +1,4 @@
+// Updated frontend/lib/features/dashboard/dashboard.dart
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:perinatal_app/features/profile/profile.dart';
@@ -9,6 +10,8 @@ import '../resources/resources_list.dart';
 import '../resources/resources_model.dart';
 import '../resources/resources_provider.dart';
 import '../services/services_provider.dart';
+import '../referrals/referral_tag_widget.dart'; // Add this import
+import '../referrals/referral_provider.dart'; // Add this import
 import '../../providers/auth_provider.dart';
 import '../services/services_model.dart';
 import '../services/services_list.dart';
@@ -33,7 +36,6 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
   bool get wantKeepAlive => true;
 
   @override
-  @override
   void initState() {
     super.initState();
 
@@ -41,6 +43,7 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
       final navProvider = Provider.of<NavigationProvider>(context, listen: false);
       final servicesProvider = Provider.of<ServicesProvider>(context, listen: false);
       final resourcesProvider = Provider.of<ResourcesProvider>(context, listen: false);
+      final referralProvider = Provider.of<ReferralProvider>(context, listen: false);
 
       if (navProvider.currentIndex != 0) {
         navProvider.updateIndex(0);
@@ -49,6 +52,9 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
       // Load featured services and resources for dashboard
       servicesProvider.loadFeaturedServices();
       resourcesProvider.loadFeaturedResources();
+
+      // Load user's received referrals to show NHS tags
+      referralProvider.loadReceivedReferrals(refresh: true);
     });
   }
 
@@ -67,9 +73,11 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
               onRefresh: () async {
                 final servicesProvider = Provider.of<ServicesProvider>(context, listen: false);
                 final resourcesProvider = Provider.of<ResourcesProvider>(context, listen: false);
+                final referralProvider = Provider.of<ReferralProvider>(context, listen: false);
                 await Future.wait([
                   servicesProvider.loadFeaturedServices(),
                   resourcesProvider.loadFeaturedResources(),
+                  referralProvider.loadReceivedReferrals(refresh: true),
                 ]);
               },
               child: SingleChildScrollView(
@@ -148,10 +156,43 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
       ),
       centerTitle: true,
       actions: [
-        IconButton(
-          icon: const Icon(Icons.notifications_none, color: kDarkGreyText),
-          iconSize: 27,
-          onPressed: () {},
+        Consumer<ReferralProvider>(
+          builder: (context, referralProvider, _) {
+            final pendingCount = referralProvider.pendingReceivedCount;
+            return Stack(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.notifications_none, color: kDarkGreyText),
+                  iconSize: 27,
+                  onPressed: () {},
+                ),
+                if (pendingCount > 0)
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 14,
+                        minHeight: 14,
+                      ),
+                      child: Text(
+                        '$pendingCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
         Container(
           margin: const EdgeInsets.only(right: 8.0),
@@ -410,7 +451,7 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
           children: servicesProvider.featuredServices.map((service) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 16),
-              child: _featuredServiceTile(service),
+              child: _featuredServiceTileWithReferral(service),
             );
           }).toList(),
         );
@@ -418,7 +459,22 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
     );
   }
 
-  // ───────────────────── Featured Service Card ──────────────────────
+  // ───────────────────── Featured Service Card with Referral ──────────────────────
+  Widget _featuredServiceTileWithReferral(ServiceModel service) {
+    return Column(
+      children: [
+        // NHS Referral Tag (if exists)
+        ReferralTagWidget(
+          itemId: service.id,
+          itemType: 'service',
+          showDetails: true,
+        ),
+        // Original Service Tile
+        _featuredServiceTile(service),
+      ],
+    );
+  }
+
   Widget _featuredServiceTile(ServiceModel service) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -442,12 +498,25 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      service.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            service.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        // Compact NHS Referral Tag in header
+                        ReferralTagWidget(
+                          itemId: service.id,
+                          itemType: 'service',
+                          showDetails: false,
+                          compact: true,
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -561,6 +630,207 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
     );
   }
 
+  Widget _featuredResourcesSection() {
+    return Consumer<ResourcesProvider>(
+      builder: (context, resourcesProvider, child) {
+        if (resourcesProvider.isFeaturedLoading) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        if (resourcesProvider.error != null) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.red[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.red[300]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red[700]),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Failed to load resources: ${resourcesProvider.error}',
+                    style: TextStyle(color: Colors.red[700]),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        if (resourcesProvider.featuredResources.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Center(
+              child: Text(
+                'No featured resources available',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          );
+        }
+
+        return Column(
+          children: resourcesProvider.featuredResources.take(2).map((resource) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _featuredResourceTileWithReferral(resource),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  // Add this method to build featured resource tiles with referral tags
+  Widget _featuredResourceTileWithReferral(ResourceModel resource) {
+    return Column(
+      children: [
+        // NHS Referral Tag (if exists)
+        ReferralTagWidget(
+          itemId: resource.id,
+          itemType: 'resource',
+          showDetails: true,
+        ),
+        // Original Resource Tile
+        _featuredResourceTile(resource),
+      ],
+    );
+  }
+
+  Widget _featuredResourceTile(ResourceModel resource) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.black12),
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: resource.resourceTypeColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  resource.resourceTypeIcon,
+                  color: resource.resourceTypeColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            resource.title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        // Compact NHS Referral Tag in header
+                        ReferralTagWidget(
+                          itemId: resource.id,
+                          itemType: 'resource',
+                          showDetails: false,
+                          compact: true,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      resource.resourceTypeDisplayName,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: kDarkGreyText,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            resource.shortDescription,
+            style: const TextStyle(fontSize: 14, color: kDarkGreyText),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: resource.resourceTypeColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  resource.targetAudienceDisplayName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kActionGreen,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ResourceDetailScreen(resource: resource),
+                    ),
+                  );
+                },
+                child: const Text(
+                  'Read More',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   // ───────────────────── Bottom Navigation Bar ──────────────────────
   Widget _bottomNavBar() {
     final navProvider = Provider.of<NavigationProvider>(context, listen: false);
@@ -643,179 +913,6 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
             );
           }),
         ),
-      ),
-    );
-  }
-
-  Widget _featuredResourcesSection() {
-    return Consumer<ResourcesProvider>(
-      builder: (context, resourcesProvider, child) {
-        if (resourcesProvider.isFeaturedLoading) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(32.0),
-              child: CircularProgressIndicator(),
-            ),
-          );
-        }
-
-        if (resourcesProvider.error != null) {
-          return Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.red[50],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.red[300]!),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.error_outline, color: Colors.red[700]),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Failed to load resources: ${resourcesProvider.error}',
-                    style: TextStyle(color: Colors.red[700]),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        if (resourcesProvider.featuredResources.isEmpty) {
-          return Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey[300]!),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Center(
-              child: Text(
-                'No featured resources available',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-          );
-        }
-
-        return Column(
-          children: resourcesProvider.featuredResources.take(2).map((resource) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: _featuredResourceTile(resource),
-            );
-          }).toList(),
-        );
-      },
-    );
-  }
-
-// Add this method to build featured resource tiles
-  Widget _featuredResourceTile(ResourceModel resource) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.black12),
-        borderRadius: BorderRadius.circular(12),
-        color: Colors.white,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: resource.resourceTypeColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  resource.resourceTypeIcon,
-                  color: resource.resourceTypeColor,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      resource.title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      resource.resourceTypeDisplayName,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: kDarkGreyText,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            resource.shortDescription,
-            style: const TextStyle(fontSize: 14, color: kDarkGreyText),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: resource.resourceTypeColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  resource.targetAudienceDisplayName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const Spacer(),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: kActionGreen,
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ResourceDetailScreen(resource: resource),
-                    ),
-                  );
-                },
-                child: const Text(
-                  'Read More',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }

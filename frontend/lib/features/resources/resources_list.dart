@@ -1,10 +1,12 @@
-// frontend/lib/features/resources/resources_list.dart
+// Updated frontend/lib/features/resources/resources_list.dart
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../main.dart';
 import '../profile/profile.dart';
 import '../support_groups/support_groups_list.dart';
+import '../referrals/referral_tag_widget.dart'; // Add this import
+import '../referrals/referral_provider.dart'; // Add this import
 import 'resources_provider.dart';
 import 'resources_model.dart';
 import 'resources_detail.dart';
@@ -38,6 +40,10 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> with Automati
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final resourcesProvider = Provider.of<ResourcesProvider>(context, listen: false);
       resourcesProvider.loadResources(refresh: true);
+
+      // Load user's received referrals to show NHS tags
+      final referralProvider = Provider.of<ReferralProvider>(context, listen: false);
+      referralProvider.loadReceivedReferrals(refresh: true);
     });
 
     // Add scroll listener for pagination
@@ -155,7 +161,7 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> with Automati
                       }
 
                       final resource = resourcesProvider.resources[index];
-                      return _buildResourceTile(resource);
+                      return _buildResourceTileWithReferral(resource);
                     },
                   ),
                 );
@@ -405,6 +411,22 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> with Automati
     );
   }
 
+  // Updated method with referral integration
+  Widget _buildResourceTileWithReferral(ResourceModel resource) {
+    return Column(
+      children: [
+        // NHS Referral Tag (if exists)
+        ReferralTagWidget(
+          itemId: resource.id,
+          itemType: 'resource',
+          showDetails: true,
+        ),
+        // Original Resource Tile
+        _buildResourceTile(resource),
+      ],
+    );
+  }
+
   Widget _buildResourceTile(ResourceModel resource) {
     return InkWell(
       onTap: () {
@@ -456,14 +478,27 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> with Automati
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        resource.title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              resource.title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          // Compact NHS Referral Tag
+                          ReferralTagWidget(
+                            itemId: resource.id,
+                            itemType: 'resource',
+                            showDetails: false,
+                            compact: true,
+                          ),
+                        ],
                       ),
                       if (resource.hasAuthor) ...[
                         const SizedBox(height: 2),
