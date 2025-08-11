@@ -400,7 +400,6 @@ class ApiService {
     }
   }
 
-  // Feedback endpoints
   static Future<Map<String, dynamic>> submitFeedback({
     required bool anonymous,
     required String rating,
@@ -432,6 +431,60 @@ class ApiService {
     } catch (e) {
       print('Submit feedback error: $e');
       throw Exception('Failed to submit feedback: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getFeedbackList({
+    int page = 1,
+    int pageSize = 20,
+    String? category,
+    String? rating,
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'page_size': pageSize.toString(),
+      };
+
+      if (category != null && category.isNotEmpty) {
+        queryParams['category'] = category;
+      }
+
+      if (rating != null && rating.isNotEmpty) {
+        queryParams['rating'] = rating;
+      }
+
+      final uri = Uri.parse('$baseUrl/admin/feedback').replace(queryParameters: queryParams);
+      final headers = await getHeaders();
+      final response = await http.get(uri, headers: headers);
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to get feedback list');
+      }
+    } catch (e) {
+      print('Get feedback list error: $e');
+      throw Exception('Failed to get feedback list: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getFeedbackStats() async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/feedback/stats'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to get feedback stats');
+      }
+    } catch (e) {
+      print('Get feedback stats error: $e');
+      throw Exception('Failed to get feedback stats: $e');
     }
   }
 

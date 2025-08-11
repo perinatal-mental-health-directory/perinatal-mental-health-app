@@ -141,14 +141,6 @@ class _ProfessionalDashboardScreenState extends State<ProfessionalDashboardScree
         mainAxisAlignment: MainAxisAlignment.center,
         children: const [
           Text(
-            'Professional',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: kDarkGreyText,
-              fontSize: 18,
-            ),
-          ),
-          Text(
             'Dashboard',
             style: TextStyle(
               fontWeight: FontWeight.bold,

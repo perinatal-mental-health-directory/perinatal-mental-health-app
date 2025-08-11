@@ -37,16 +37,11 @@ CREATE TABLE referrals (
 CREATE TABLE feedback (
                           id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                           user_id UUID REFERENCES users(id) ON DELETE SET NULL, -- Allow anonymous feedback
-                          service_id UUID REFERENCES services(id) ON DELETE CASCADE, -- Optional service-specific feedback
-                          rating VARCHAR(20) NOT NULL CHECK (rating IN ('very_dissatisfied', 'dissatisfied', 'neutral', 'satisfied', 'very_satisfied')),
-                          title VARCHAR(255) NOT NULL,
-                          content TEXT NOT NULL,
-                          is_anonymous BOOLEAN DEFAULT false,
-                          contact_email VARCHAR(255), -- For anonymous feedback contact
-                          status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'reviewed', 'addressed', 'archived')),
-                          admin_response TEXT,
-                          admin_responder_id UUID REFERENCES users(id) ON DELETE SET NULL,
-                          response_date TIMESTAMP WITH TIME ZONE,
+                          anonymous BOOLEAN DEFAULT false,
+                          rating VARCHAR(50) NOT NULL CHECK (rating IN ('Very Dissatisfied', 'Dissatisfied', 'Neutral', 'Satisfied', 'Very Satisfied')),
+                          feedback TEXT NOT NULL,
+                          category VARCHAR(100) NOT NULL,
+                          is_active BOOLEAN DEFAULT true,
                           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -133,7 +128,9 @@ CREATE INDEX idx_referrals_created_at ON referrals(created_at);
 
 CREATE INDEX idx_feedback_user_id ON feedback(user_id);
 CREATE INDEX idx_feedback_rating ON feedback(rating);
+CREATE INDEX idx_feedback_category ON feedback(category);
 CREATE INDEX idx_feedback_created_at ON feedback(created_at);
+CREATE INDEX idx_feedback_active ON feedback(is_active);
 
 -- Create indexes for better performance
 CREATE INDEX idx_resources_resource_type ON resources(resource_type);

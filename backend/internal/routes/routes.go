@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"github.com/perinatal-mental-health-app/backend/internal/feedback"
 	"github.com/perinatal-mental-health-app/backend/internal/user"
 	"net/http"
 	"strconv"
@@ -9,7 +10,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/perinatal-mental-health-app/backend/internal/auth"
 	config "github.com/perinatal-mental-health-app/backend/internal/configs"
-	"github.com/perinatal-mental-health-app/backend/internal/feedback"
 	"github.com/perinatal-mental-health-app/backend/internal/health"
 	"github.com/perinatal-mental-health-app/backend/internal/journey"
 	custommiddleware "github.com/perinatal-mental-health-app/backend/internal/middleware"
@@ -246,22 +246,27 @@ func Register(e *echo.Echo, db *pgxpool.Pool, cfg *config.Config) {
 	adminReferrals.Use(custommiddleware.RoleMiddleware("nhs_staff", "professional"))
 	adminReferrals.GET("/stats", referralsHandler.GetReferralStats)
 
-	// --- Feedback ---
+	// --- Enhanced Feedback Routes ---
 	feedbackStore := feedback.NewStore(db)
 	feedbackService := feedback.NewService(feedbackStore)
 	feedbackHandler := feedback.NewHandler(feedbackService)
 
-	// Protected feedback routes (require authentication)
-	feedbackGroup := v1.Group("/feedback")
-	feedbackGroup.Use(custommiddleware.JWTMiddleware(jwtService))
-	feedbackGroup.POST("", feedbackHandler.CreateFeedback)
+	// Public feedback submission (anonymous allowed)
+	v1.POST("/feedback", feedbackHandler.CreateFeedback, custommiddleware.OptionalJWTMiddleware(jwtService))
+
+	// User's own feedback (require authentication)
+	userFeedback := v1.Group("/my-feedback")
+	userFeedback.Use(custommiddleware.JWTMiddleware(jwtService))
+	userFeedback.GET("", feedbackHandler.GetUserFeedback)
 
 	// Admin routes for feedback (require staff/professional role)
 	adminFeedback := v1.Group("/admin/feedback")
 	adminFeedback.Use(custommiddleware.JWTMiddleware(jwtService))
 	adminFeedback.Use(custommiddleware.RoleMiddleware("nhs_staff", "professional"))
-	adminFeedback.GET("", feedbackHandler.ListFeedback)
-	adminFeedback.GET("/stats", feedbackHandler.GetFeedbackStats)
+	adminFeedback.GET("", feedbackHandler.ListFeedback)                    // List all feedback
+	adminFeedback.GET("/stats", feedbackHandler.GetFeedbackStats)          // Get feedback statistics
+	adminFeedback.GET("/:id", feedbackHandler.GetFeedback)                 // Get single feedback
+	adminFeedback.PUT("/:id/status", feedbackHandler.UpdateFeedbackStatus) // Update feedback status
 
 	// --- Journey ---
 	journeyStore := journey.NewStore(db)

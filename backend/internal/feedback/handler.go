@@ -8,10 +8,10 @@ import (
 )
 
 type Handler struct {
-	service *Service
+	service FeedbackServiceInterface
 }
 
-func NewHandler(service *Service) *Handler {
+func NewHandler(service FeedbackServiceInterface) *Handler {
 	return &Handler{
 		service: service,
 	}
@@ -26,12 +26,6 @@ func (h *Handler) CreateFeedback(c echo.Context) error {
 		})
 	}
 
-	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": err.Error(),
-		})
-	}
-
 	// Get user ID from context if not anonymous
 	var userID *string
 	if !req.Anonymous {
@@ -42,7 +36,7 @@ func (h *Handler) CreateFeedback(c echo.Context) error {
 
 	feedback, err := h.service.CreateFeedback(c.Request().Context(), &req, userID)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
+		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": err.Error(),
 		})
 	}
@@ -90,6 +84,90 @@ func (h *Handler) GetFeedbackStats(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, stats)
+}
+
+// GetFeedback retrieves a single feedback by ID (admin only)
+func (h *Handler) GetFeedback(c echo.Context) error {
+	feedbackID := c.Param("id")
+	if feedbackID == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "Feedback ID is required",
+		})
+	}
+
+	feedback, err := h.service.GetFeedbackByID(c.Request().Context(), feedbackID)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, map[string]string{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, feedback)
+}
+
+// UpdateFeedbackStatus updates the status of feedback (admin only)
+func (h *Handler) UpdateFeedbackStatus(c echo.Context) error {
+	feedbackID := c.Param("id")
+	if feedbackID == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "Feedback ID is required",
+		})
+	}
+
+	var req struct {
+		IsActive bool `json:"is_active"`
+	}
+
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "Invalid request format",
+		})
+	}
+
+	err := h.service.UpdateFeedbackStatus(c.Request().Context(), feedbackID, req.IsActive)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"message": "Feedback status updated successfully",
+	})
+}
+
+// GetUserFeedback retrieves feedback for the current user
+func (h *Handler) GetUserFeedback(c echo.Context) error {
+	userID := getUserIDFromContext(c)
+	if userID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "User not authenticated",
+		})
+	}
+
+	// Parse query parameters
+	page := 1
+	if p := c.QueryParam("page"); p != "" {
+		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+
+	pageSize := 20
+	if ps := c.QueryParam("page_size"); ps != "" {
+		if parsed, err := strconv.Atoi(ps); err == nil && parsed > 0 && parsed <= 100 {
+			pageSize = parsed
+		}
+	}
+
+	feedback, err := h.service.GetUserFeedback(c.Request().Context(), userID, page, pageSize)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, feedback)
 }
 
 // Helper function to extract user ID from JWT context

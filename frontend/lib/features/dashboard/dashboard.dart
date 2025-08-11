@@ -10,8 +10,8 @@ import '../resources/resources_list.dart';
 import '../resources/resources_model.dart';
 import '../resources/resources_provider.dart';
 import '../services/services_provider.dart';
-import '../referrals/referral_tag_widget.dart'; // Add this import
-import '../referrals/referral_provider.dart'; // Add this import
+import '../referrals/referral_provider.dart';
+import '../notifications/notifications_screen.dart'; // Add this import
 import '../../providers/auth_provider.dart';
 import '../services/services_model.dart';
 import '../services/services_list.dart';
@@ -53,7 +53,7 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
       servicesProvider.loadFeaturedServices();
       resourcesProvider.loadFeaturedResources();
 
-      // Load user's received referrals to show NHS tags
+      // Load user's received referrals for notification count
       referralProvider.loadReceivedReferrals(refresh: true);
     });
   }
@@ -164,7 +164,12 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
                 IconButton(
                   icon: const Icon(Icons.notifications_none, color: kDarkGreyText),
                   iconSize: 27,
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                    );
+                  },
                 ),
                 if (pendingCount > 0)
                   Positioned(
@@ -451,7 +456,7 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
           children: servicesProvider.featuredServices.map((service) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 16),
-              child: _featuredServiceTileWithReferral(service),
+              child: _featuredServiceTile(service),
             );
           }).toList(),
         );
@@ -459,22 +464,7 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
     );
   }
 
-  // ───────────────────── Featured Service Card with Referral ──────────────────────
-  Widget _featuredServiceTileWithReferral(ServiceModel service) {
-    return Column(
-      children: [
-        // NHS Referral Tag (if exists)
-        ReferralTagWidget(
-          itemId: service.id,
-          itemType: 'service',
-          showDetails: true,
-        ),
-        // Original Service Tile
-        _featuredServiceTile(service),
-      ],
-    );
-  }
-
+  // ───────────────────── Featured Service Card ──────────────────────
   Widget _featuredServiceTile(ServiceModel service) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -498,25 +488,12 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            service.name,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                        // Compact NHS Referral Tag in header
-                        ReferralTagWidget(
-                          itemId: service.id,
-                          itemType: 'service',
-                          showDetails: false,
-                          compact: true,
-                        ),
-                      ],
+                    Text(
+                      service.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -685,27 +662,11 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
           children: resourcesProvider.featuredResources.take(2).map((resource) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 16),
-              child: _featuredResourceTileWithReferral(resource),
+              child: _featuredResourceTile(resource),
             );
           }).toList(),
         );
       },
-    );
-  }
-
-  // Add this method to build featured resource tiles with referral tags
-  Widget _featuredResourceTileWithReferral(ResourceModel resource) {
-    return Column(
-      children: [
-        // NHS Referral Tag (if exists)
-        ReferralTagWidget(
-          itemId: resource.id,
-          itemType: 'resource',
-          showDetails: true,
-        ),
-        // Original Resource Tile
-        _featuredResourceTile(resource),
-      ],
     );
   }
 
@@ -739,27 +700,14 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            resource.title,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        // Compact NHS Referral Tag in header
-                        ReferralTagWidget(
-                          itemId: resource.id,
-                          itemType: 'resource',
-                          showDetails: false,
-                          compact: true,
-                        ),
-                      ],
+                    Text(
+                      resource.title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(

@@ -5,8 +5,8 @@ import 'package:provider/provider.dart';
 import '../../main.dart';
 import '../profile/profile.dart';
 import '../support_groups/support_groups_list.dart';
-import '../referrals/referral_tag_widget.dart'; // Add this import
-import '../referrals/referral_provider.dart'; // Add this import
+import '../notifications/notifications_screen.dart'; // Add this import
+import '../referrals/referral_provider.dart'; // Keep for notification count
 import 'resources_provider.dart';
 import 'resources_model.dart';
 import 'resources_detail.dart';
@@ -41,7 +41,7 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> with Automati
       final resourcesProvider = Provider.of<ResourcesProvider>(context, listen: false);
       resourcesProvider.loadResources(refresh: true);
 
-      // Load user's received referrals to show NHS tags
+      // Load user's received referrals for notification count only
       final referralProvider = Provider.of<ReferralProvider>(context, listen: false);
       referralProvider.loadReceivedReferrals(refresh: true);
     });
@@ -161,7 +161,7 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> with Automati
                       }
 
                       final resource = resourcesProvider.resources[index];
-                      return _buildResourceTileWithReferral(resource);
+                      return _buildResourceTile(resource);
                     },
                   ),
                 );
@@ -206,6 +206,49 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> with Automati
             setState(() {
               _showFilters = !_showFilters;
             });
+          },
+        ),
+        Consumer<ReferralProvider>(
+          builder: (context, referralProvider, _) {
+            final pendingCount = referralProvider.pendingReceivedCount;
+            return Stack(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.notifications_none, color: kDarkGreyText),
+                  iconSize: 27,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                    );
+                  },
+                ),
+                if (pendingCount > 0)
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 14,
+                        minHeight: 14,
+                      ),
+                      child: Text(
+                        '$pendingCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            );
           },
         ),
         Container(
@@ -411,22 +454,6 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> with Automati
     );
   }
 
-  // Updated method with referral integration
-  Widget _buildResourceTileWithReferral(ResourceModel resource) {
-    return Column(
-      children: [
-        // NHS Referral Tag (if exists)
-        ReferralTagWidget(
-          itemId: resource.id,
-          itemType: 'resource',
-          showDetails: true,
-        ),
-        // Original Resource Tile
-        _buildResourceTile(resource),
-      ],
-    );
-  }
-
   Widget _buildResourceTile(ResourceModel resource) {
     return InkWell(
       onTap: () {
@@ -478,27 +505,14 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> with Automati
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              resource.title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          // Compact NHS Referral Tag
-                          ReferralTagWidget(
-                            itemId: resource.id,
-                            itemType: 'resource',
-                            showDetails: false,
-                            compact: true,
-                          ),
-                        ],
+                      Text(
+                        resource.title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       if (resource.hasAuthor) ...[
                         const SizedBox(height: 2),
