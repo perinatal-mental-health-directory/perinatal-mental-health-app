@@ -191,6 +191,41 @@ func (h *handler) ListUsers(c echo.Context) error {
 	return c.JSON(http.StatusOK, users)
 }
 
+// SearchUsers searches for users based on query parameters
+func (h *handler) SearchUsers(c echo.Context) error {
+	query := c.QueryParam("q")
+	if query == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "Query parameter 'q' is required",
+		})
+	}
+
+	limit := 20
+	if l := c.QueryParam("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 100 {
+			limit = parsed
+		}
+	}
+
+	var roleFilter *UserRole
+	if r := c.QueryParam("role"); r != "" {
+		role := UserRole(r)
+		roleFilter = &role
+	}
+
+	users, err := h.service.SearchUsers(c.Request().Context(), query, limit, roleFilter)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"users": users,
+		"total": len(users),
+	})
+}
+
 // DeactivateUser deactivates a user account
 func (h *handler) DeactivateUser(c echo.Context) error {
 	userID := c.Param("id")
@@ -230,6 +265,53 @@ func (h *handler) UpdateLastLogin(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Last login updated successfully",
+	})
+}
+
+// GetUserPreferences gets the current user's preferences
+func (h *handler) GetUserPreferences(c echo.Context) error {
+	userID := getUserIDFromContext(c)
+	if userID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "User not authenticated",
+		})
+	}
+
+	preferences, err := h.service.GetUserPreferences(c.Request().Context(), userID)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, map[string]string{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, preferences)
+}
+
+// UpdateUserPreferences updates the current user's preferences
+func (h *handler) UpdateUserPreferences(c echo.Context) error {
+	userID := getUserIDFromContext(c)
+	if userID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "User not authenticated",
+		})
+	}
+
+	var preferences map[string]interface{}
+	if err := c.Bind(&preferences); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "Invalid request format",
+		})
+	}
+
+	err := h.service.UpdateUserPreferences(c.Request().Context(), userID, preferences)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"message": "Preferences updated successfully",
 	})
 }
 

@@ -47,9 +47,11 @@ type CreateUserRequest struct {
 
 // UpdateUserRequest represents the request to update user information
 type UpdateUserRequest struct {
-	FullName    *string `json:"full_name,omitempty" validate:"omitempty,min=2,max=100"`
-	PhoneNumber *string `json:"phone_number,omitempty"`
-	Address     *string `json:"address,omitempty"`
+	FullName         *string    `json:"full_name,omitempty" validate:"omitempty,min=2,max=100"`
+	PhoneNumber      *string    `json:"phone_number,omitempty"`
+	Address          *string    `json:"address,omitempty"`
+	DateOfBirth      *time.Time `json:"date_of_birth,omitempty"`
+	EmergencyContact *string    `json:"emergency_contact,omitempty"`
 }
 
 // ChangePasswordRequest represents the request to change password

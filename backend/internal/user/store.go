@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -292,6 +293,54 @@ func (s *store) ListUsers(ctx context.Context, page, pageSize int, role *UserRol
 	}, nil
 }
 
+// SearchUsers searches for users based on query
+func (s *store) SearchUsers(ctx context.Context, query string, limit int, role *UserRole) ([]User, error) {
+	var whereClause string
+	var args []interface{}
+	argIndex := 1
+
+	// Build search condition
+	searchPattern := "%" + strings.ToLower(query) + "%"
+	whereClause = "WHERE is_active = true AND (LOWER(full_name) LIKE $1 OR LOWER(email) LIKE $1)"
+	args = append(args, searchPattern)
+	argIndex++
+
+	if role != nil {
+		whereClause += fmt.Sprintf(" AND role = $%d", argIndex)
+		args = append(args, *role)
+		argIndex++
+	}
+
+	sqlQuery := fmt.Sprintf(`
+		SELECT id, email, full_name, role, is_active, last_login_at, created_at, updated_at
+		FROM users
+		%s
+		ORDER BY full_name ASC
+		LIMIT $%d
+	`, whereClause, argIndex)
+
+	args = append(args, limit)
+
+	rows, err := s.db.Query(ctx, sqlQuery, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search users: %w", err)
+	}
+	defer rows.Close()
+
+	var users []User
+	for rows.Next() {
+		var user User
+		err := rows.Scan(&user.ID, &user.Email, &user.FullName, &user.Role, &user.IsActive,
+			&user.LastLoginAt, &user.CreatedAt, &user.UpdatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan user: %w", err)
+		}
+		users = append(users, user)
+	}
+
+	return users, nil
+}
+
 // UpdateLastLogin updates the user's last login time
 func (s *store) UpdateLastLogin(ctx context.Context, userID string) error {
 	query := `
@@ -320,6 +369,63 @@ func (s *store) DeactivateUser(ctx context.Context, userID string) error {
 	_, err := s.db.Exec(ctx, query, time.Now(), userID)
 	if err != nil {
 		return fmt.Errorf("failed to deactivate user: %w", err)
+	}
+
+	return nil
+}
+
+// GetUserPreferences retrieves user preferences from user_profiles table
+func (s *store) GetUserPreferences(ctx context.Context, userID string) (map[string]interface{}, error) {
+	query := `
+		SELECT preferences
+		FROM user_profiles
+		WHERE user_id = $1
+	`
+
+	var preferencesJSON *string
+	err := s.db.QueryRow(ctx, query, userID).Scan(&preferencesJSON)
+
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			// Return empty preferences if profile doesn't exist
+			return map[string]interface{}{}, nil
+		}
+		return nil, fmt.Errorf("failed to get user preferences: %w", err)
+	}
+
+	preferences := make(map[string]interface{})
+	if preferencesJSON != nil && *preferencesJSON != "" {
+		err = json.Unmarshal([]byte(*preferencesJSON), &preferences)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse preferences JSON: %w", err)
+		}
+	}
+
+	return preferences, nil
+}
+
+// UpdateUserPreferences updates user preferences in user_profiles table
+func (s *store) UpdateUserPreferences(ctx context.Context, userID string, preferences map[string]interface{}) error {
+	preferencesJSON, err := json.Marshal(preferences)
+	if err != nil {
+		return fmt.Errorf("failed to marshal preferences: %w", err)
+	}
+
+	query := `
+		UPDATE user_profiles 
+		SET preferences = $1, updated_at = $2
+		WHERE user_id = $3
+	`
+
+	now := time.Now()
+	result, err := s.db.Exec(ctx, query, string(preferencesJSON), now, userID)
+	if err != nil {
+		return fmt.Errorf("failed to update user preferences: %w", err)
+	}
+
+	rowsAffected := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("user profile not found")
 	}
 
 	return nil

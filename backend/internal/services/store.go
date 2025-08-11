@@ -132,13 +132,6 @@ func (s *Store) ListServices(ctx context.Context, page, pageSize int, serviceTyp
 	}, nil
 }
 
-// GetServiceByID retrieves a service by ID - Fixed to handle UUID properly
-func (s *Store) GetServiceByID(ctx context.Context, serviceID int) (*ServicesModel, error) {
-	// Note: This method signature expects int but our ID is UUID string
-	// This might be causing issues. Let's create a proper UUID version
-	return nil, fmt.Errorf("GetServiceByID with int ID is deprecated, use GetServiceByUUID instead")
-}
-
 // GetServiceByUUID retrieves a service by UUID string
 func (s *Store) GetServiceByUUID(ctx context.Context, serviceID string) (*ServicesModel, error) {
 	query := `

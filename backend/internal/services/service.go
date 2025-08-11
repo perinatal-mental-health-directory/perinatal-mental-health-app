@@ -34,8 +34,8 @@ func (s *Service) ListServices(ctx context.Context, page, pageSize int, serviceT
 }
 
 // GetService retrieves a service by ID
-func (s *Service) GetService(ctx context.Context, serviceID int) (*ServicesModel, error) {
-	return s.store.GetServiceByID(ctx, serviceID)
+func (s *Service) GetService(ctx context.Context, serviceID string) (*ServicesModel, error) {
+	return s.store.GetServiceByUUID(ctx, serviceID)
 }
 
 // CreateService creates a new service

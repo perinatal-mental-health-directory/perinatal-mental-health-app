@@ -12,9 +12,12 @@ type Service interface {
 	GetUserProfile(ctx context.Context, userID string) (*UserProfileResponse, error)
 	UpdateUser(ctx context.Context, userID string, req *UpdateUserRequest) (*UserResponse, error)
 	ListUsers(ctx context.Context, page, pageSize int, role *UserRole) (*ListUsersResponse, error)
+	SearchUsers(ctx context.Context, query string, limit int, role *UserRole) ([]UserResponse, error)
 	GetUserByEmail(ctx context.Context, email string) (*UserResponse, error)
 	UpdateLastLogin(ctx context.Context, userID string) error
 	DeactivateUser(ctx context.Context, userID string) error
+	GetUserPreferences(ctx context.Context, userID string) (map[string]interface{}, error)
+	UpdateUserPreferences(ctx context.Context, userID string, preferences map[string]interface{}) error
 }
 
 // Store defines the interface for user data persistence
@@ -26,8 +29,11 @@ type Store interface {
 	UpdateUser(ctx context.Context, userID string, req *UpdateUserRequest) (*User, error)
 	UpdateUserProfile(ctx context.Context, userID string, req *UpdateUserRequest) (*UserProfile, error)
 	ListUsers(ctx context.Context, page, pageSize int, role *UserRole) (*ListUsersResponse, error)
+	SearchUsers(ctx context.Context, query string, limit int, role *UserRole) ([]User, error)
 	UpdateLastLogin(ctx context.Context, userID string) error
 	DeactivateUser(ctx context.Context, userID string) error
+	GetUserPreferences(ctx context.Context, userID string) (map[string]interface{}, error)
+	UpdateUserPreferences(ctx context.Context, userID string, preferences map[string]interface{}) error
 }
 
 // Handler defines the interface for user HTTP handlers
@@ -39,6 +45,9 @@ type Handler interface {
 	UpdateUser(c echo.Context) error
 	UpdateCurrentUser(c echo.Context) error
 	ListUsers(c echo.Context) error
+	SearchUsers(c echo.Context) error
 	DeactivateUser(c echo.Context) error
 	UpdateLastLogin(c echo.Context) error
+	GetUserPreferences(c echo.Context) error
+	UpdateUserPreferences(c echo.Context) error
 }
