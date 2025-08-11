@@ -8,7 +8,7 @@ CREATE TABLE users (
                        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                        email VARCHAR(255) UNIQUE NOT NULL,
                        full_name VARCHAR(255) NOT NULL,
-                       role VARCHAR(50) NOT NULL CHECK (role IN ('service_user', 'nhs_staff', 'professional')),
+                       role VARCHAR(50) NOT NULL CHECK (role IN ('service_user', 'nhs_staff','charity','professional')),
                        password_hash VARCHAR(255) NOT NULL,
                        is_active BOOLEAN DEFAULT true,
                        last_login_at TIMESTAMP WITH TIME ZONE,

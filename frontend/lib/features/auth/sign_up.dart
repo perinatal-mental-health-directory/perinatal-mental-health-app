@@ -1,5 +1,6 @@
 // frontend/lib/features/auth/sign_up.dart
 import 'package:flutter/material.dart';
+import 'package:perinatal_app/features/dashboard/dashboard_router.dart';
 import 'package:perinatal_app/features/profile/privacy_policy_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:perinatal_app/features/auth/login_screen.dart';
@@ -114,7 +115,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     if (success && mounted) {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const DashboardScreen()),
+        MaterialPageRoute(builder: (context) => const DashboardRouter()),
       );
     }
   }

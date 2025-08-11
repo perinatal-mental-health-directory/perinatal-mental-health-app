@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:perinatal_app/features/dashboard/dashboard_router.dart';
 import 'package:provider/provider.dart';
 import 'forgot_password.dart';
 import 'sign_up.dart';
@@ -39,7 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success && mounted) {
       // Navigate to dashboard
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const DashboardScreen()),
+        MaterialPageRoute(builder: (context) => const DashboardRouter()),
       );
     }
   }
@@ -47,14 +48,14 @@ class _LoginScreenState extends State<LoginScreen> {
   void _handleGoogleLogin() async {
     // For now, just navigate to dashboard (implement Google auth later)
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const DashboardScreen()),
+      MaterialPageRoute(builder: (context) => const DashboardRouter()),
     );
   }
 
   void _handleNHSLogin() async {
     // For now, just navigate to dashboard (implement NHS auth later)
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const DashboardScreen()),
+      MaterialPageRoute(builder: (context) => const DashboardRouter()),
     );
   }
 

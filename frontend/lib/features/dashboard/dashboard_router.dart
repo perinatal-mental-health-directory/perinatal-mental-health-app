@@ -12,10 +12,14 @@ class DashboardRouter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
-        final userRole = authProvider.user?['role'];
+        final userRole = authProvider.user?['role']?.toString().toLowerCase();
 
-        // Show professional dashboard for professionals and NHS staff
-        if (userRole == 'professional' || userRole == 'nhs_staff') {
+        // Handle both formats: 'professional'/'Professional' and 'nhs_staff'/'NHS Staff'
+        final isProfessional = userRole == 'professional' ||
+            userRole == 'nhs_staff' ||
+            userRole == 'nhs staff'; // Handle space variant too
+
+        if (isProfessional) {
           return const ProfessionalDashboardScreen();
         }
 

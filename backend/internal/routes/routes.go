@@ -1,7 +1,10 @@
-// backend/internal/routes/routes.go
 package routes
 
 import (
+	"github.com/perinatal-mental-health-app/backend/internal/user"
+	"net/http"
+	"strconv"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/perinatal-mental-health-app/backend/internal/auth"
@@ -15,9 +18,6 @@ import (
 	"github.com/perinatal-mental-health-app/backend/internal/resources"
 	"github.com/perinatal-mental-health-app/backend/internal/services"
 	"github.com/perinatal-mental-health-app/backend/internal/support_groups"
-	"github.com/perinatal-mental-health-app/backend/internal/user"
-	"net/http"
-	"strconv"
 )
 
 func Register(e *echo.Echo, db *pgxpool.Pool, cfg *config.Config) {
@@ -52,10 +52,13 @@ func Register(e *echo.Echo, db *pgxpool.Pool, cfg *config.Config) {
 	users := v1.Group("/users")
 	users.Use(custommiddleware.JWTMiddleware(jwtService))
 	users.GET("", userHandler.ListUsers, custommiddleware.RoleMiddleware("nhs_staff", "professional"))
+	users.GET("/search", userHandler.SearchUsers) // Added missing search endpoint
 	users.GET("/:id", userHandler.GetUser)
 	users.GET("/:id/profile", userHandler.GetUserProfile)
 	users.PUT("/:id", userHandler.UpdateUser, custommiddleware.RoleMiddleware("nhs_staff", "professional"))
 	users.DELETE("/:id", userHandler.DeactivateUser, custommiddleware.RoleMiddleware("nhs_staff", "professional"))
+
+	// Auth routes that need to be with users context
 	v1.POST("/auth/change-password", authHandler.ChangePassword, custommiddleware.JWTMiddleware(jwtService))
 
 	// Current user routes (require authentication)
@@ -64,6 +67,8 @@ func Register(e *echo.Echo, db *pgxpool.Pool, cfg *config.Config) {
 	me.GET("", userHandler.GetCurrentUserProfile)
 	me.PUT("", userHandler.UpdateCurrentUser)
 	me.POST("/last-login", userHandler.UpdateLastLogin)
+	me.GET("/preferences", userHandler.GetUserPreferences)    // Added missing preferences endpoint
+	me.PUT("/preferences", userHandler.UpdateUserPreferences) // Added missing preferences endpoint
 
 	// --- Privacy & GDPR ---
 	privacyStore := privacy.NewStore(db)
@@ -100,14 +105,14 @@ func Register(e *echo.Echo, db *pgxpool.Pool, cfg *config.Config) {
 			}
 		}
 
-		servicesSvc, err := servicesService.GetFeaturedServices(c.Request().Context(), limit)
+		servicesList, err := servicesService.GetFeaturedServices(c.Request().Context(), limit)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": err.Error(),
 			})
 		}
 
-		return c.JSON(http.StatusOK, servicesSvc)
+		return c.JSON(http.StatusOK, servicesList)
 	})
 
 	// Admin routes for services (require staff/professional role)
@@ -188,15 +193,57 @@ func Register(e *echo.Echo, db *pgxpool.Pool, cfg *config.Config) {
 	// Protected referral routes (require authentication)
 	referralsGroup := v1.Group("/referrals")
 	referralsGroup.Use(custommiddleware.JWTMiddleware(jwtService))
-	referralsGroup.GET("", referralsHandler.ListReferrals)
-	referralsGroup.POST("", referralsHandler.CreateReferral)
+
+	// Create referral (professionals/NHS staff only)
+	referralsGroup.POST("", referralsHandler.CreateReferral, custommiddleware.RoleMiddleware("nhs_staff", "professional"))
+
+	// List referrals
+	referralsGroup.GET("/sent", referralsHandler.ListSentReferrals, custommiddleware.RoleMiddleware("nhs_staff", "professional"))
+	referralsGroup.GET("/received", referralsHandler.ListReceivedReferrals)
+
+	// Individual referral operations
 	referralsGroup.GET("/:id", referralsHandler.GetReferral)
+	referralsGroup.PUT("/:id", referralsHandler.UpdateReferral)
+	referralsGroup.PUT("/:id/status", referralsHandler.UpdateReferralStatus)
+	referralsGroup.DELETE("/:id", referralsHandler.DeleteReferral, custommiddleware.RoleMiddleware("nhs_staff", "professional"))
+
+	// Search users for referrals (professionals/NHS staff only)
+	referralsGroup.GET("/users/search", referralsHandler.SearchUsers, custommiddleware.RoleMiddleware("nhs_staff", "professional"))
+
+	// Get referrals by item
+	referralsGroup.GET("/by-item", referralsHandler.GetReferralsByItem)
+
+	// Referral statistics
+	referralsGroup.GET("/stats", referralsHandler.GetReferralStats, custommiddleware.RoleMiddleware("nhs_staff", "professional"))
+
+	// Legacy compatibility - Default referrals endpoint maps to received for parents, sent for professionals
+	v1.GET("/referrals", func(c echo.Context) error {
+		userRole := c.Get("user_role")
+		if userRole == nil {
+			return c.JSON(http.StatusUnauthorized, map[string]string{
+				"error": "User role not found",
+			})
+		}
+
+		role, ok := userRole.(string)
+		if !ok {
+			return c.JSON(http.StatusUnauthorized, map[string]string{
+				"error": "Invalid user role format",
+			})
+		}
+
+		// Route to appropriate handler based on role
+		if role == "professional" || role == "nhs_staff" {
+			return referralsHandler.ListSentReferrals(c)
+		} else {
+			return referralsHandler.ListReceivedReferrals(c)
+		}
+	}, custommiddleware.JWTMiddleware(jwtService))
 
 	// Admin/Staff routes for referrals (require staff/professional role)
 	adminReferrals := v1.Group("/admin/referrals")
 	adminReferrals.Use(custommiddleware.JWTMiddleware(jwtService))
 	adminReferrals.Use(custommiddleware.RoleMiddleware("nhs_staff", "professional"))
-	adminReferrals.PUT("/:id", referralsHandler.UpdateReferral)
 	adminReferrals.GET("/stats", referralsHandler.GetReferralStats)
 
 	// --- Feedback ---

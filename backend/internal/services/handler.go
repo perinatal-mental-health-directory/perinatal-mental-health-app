@@ -63,14 +63,8 @@ func (h *Handler) ListServices(c echo.Context) error {
 // GetService retrieves a service by ID
 func (h *Handler) GetService(c echo.Context) error {
 	serviceIDStr := c.Param("id")
-	serviceID, err := strconv.Atoi(serviceIDStr)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid service ID",
-		})
-	}
 
-	service, err := h.service.GetService(c.Request().Context(), serviceID)
+	service, err := h.service.GetService(c.Request().Context(), serviceIDStr)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{
 			"error": err.Error(),
