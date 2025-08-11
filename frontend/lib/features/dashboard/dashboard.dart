@@ -3,6 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:perinatal_app/features/profile/profile.dart';
 import 'package:provider/provider.dart';
 import '../../main.dart';
+import '../journey/journey_screen.dart';
 import '../resources/resources_detail.dart';
 import '../resources/resources_list.dart';
 import '../resources/resources_model.dart';
@@ -300,9 +301,9 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
         );
       }),
       ('Your Journey', FontAwesomeIcons.heartPulse, () {
-        // TODO: Navigate to user journey
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Your Journey coming soon!')),
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const JourneyScreen()),
         );
       }),
     ];

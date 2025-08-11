@@ -35,12 +35,6 @@ func (h *handler) CreateJourneyEntry(c echo.Context) error {
 		})
 	}
 
-	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": err.Error(),
-		})
-	}
-
 	entry, err := h.service.CreateJourneyEntry(c.Request().Context(), userID, &req)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
@@ -116,12 +110,6 @@ func (h *handler) UpdateJourneyEntry(c echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "Invalid request format",
-		})
-	}
-
-	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": err.Error(),
 		})
 	}
 
@@ -223,12 +211,6 @@ func (h *handler) CreateJourneyGoal(c echo.Context) error {
 		})
 	}
 
-	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": err.Error(),
-		})
-	}
-
 	goal, err := h.service.CreateJourneyGoal(c.Request().Context(), userID, &req)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
@@ -259,12 +241,6 @@ func (h *handler) UpdateJourneyGoal(c echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "Invalid request format",
-		})
-	}
-
-	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": err.Error(),
 		})
 	}
 

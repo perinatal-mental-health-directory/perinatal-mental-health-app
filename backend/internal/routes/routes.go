@@ -216,8 +216,6 @@ func Register(e *echo.Echo, db *pgxpool.Pool, cfg *config.Config) {
 	adminFeedback.GET("", feedbackHandler.ListFeedback)
 	adminFeedback.GET("/stats", feedbackHandler.GetFeedbackStats)
 
-	// Add this to your existing routes.go file after the other route definitions
-
 	// --- Journey ---
 	journeyStore := journey.NewStore(db)
 	journeyService := journey.NewService(journeyStore)

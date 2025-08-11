@@ -5,6 +5,7 @@ import 'package:perinatal_app/features/resources/resources_list.dart';
 import 'package:perinatal_app/features/support_groups/support_groups_list.dart';
 import 'package:provider/provider.dart';
 import 'features/dashboard/dashboard.dart';
+import 'features/journey/journey_provider.dart';
 import 'features/splash/splash_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/services/services_list.dart';
@@ -33,6 +34,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => PrivacyProvider()),
         ChangeNotifierProvider(create: (_) => ResourcesProvider()),
         ChangeNotifierProvider(create: (_) => SupportGroupsProvider()),
+        ChangeNotifierProvider(create: (_) => JourneyProvider()),
       ],
       child: MaterialApp(
         title: 'Perinatal Mental Health App',
