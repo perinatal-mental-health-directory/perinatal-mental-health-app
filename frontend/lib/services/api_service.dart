@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/app_config.dart';
 import '../features/journey/journey_model.dart';
+import '../features/referrals/referral_model.dart';
 
 class ApiService {
   static const String baseUrl = AppConfig.baseUrl;
@@ -431,68 +432,6 @@ class ApiService {
     } catch (e) {
       print('Submit feedback error: $e');
       throw Exception('Failed to submit feedback: $e');
-    }
-  }
-
-  // Referrals endpoints
-  static Future<Map<String, dynamic>> createReferral({
-    required String patientName,
-    required String contact,
-    required String reason,
-    required String serviceType,
-    required bool isUrgent,
-    int? serviceId,
-  }) async {
-    try {
-      final headers = await getHeaders();
-      final response = await http.post(
-        Uri.parse('$baseUrl/referrals'),
-        headers: headers,
-        body: jsonEncode({
-          'patient_name': patientName,
-          'contact': contact,
-          'reason': reason,
-          'service_type': serviceType,
-          'is_urgent': isUrgent,
-          if (serviceId != null) 'service_id': serviceId,
-        }),
-      );
-
-      print('Create referral response status: ${response.statusCode}');
-      print('Create referral response body: ${response.body}');
-
-      if (response.statusCode == 201) {
-        return jsonDecode(response.body);
-      } else {
-        final errorData = jsonDecode(response.body);
-        throw Exception(errorData['error'] ?? 'Failed to create referral');
-      }
-    } catch (e) {
-      print('Create referral error: $e');
-      throw Exception('Failed to create referral: $e');
-    }
-  }
-
-  static Future<List<dynamic>> getReferrals({int page = 1, int pageSize = 20}) async {
-    try {
-      final headers = await getHeaders();
-      final response = await http.get(
-        Uri.parse('$baseUrl/referrals?page=$page&page_size=$pageSize'),
-        headers: headers,
-      );
-
-      print('Get referrals response status: ${response.statusCode}');
-      print('Get referrals response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['referrals'] ?? [];
-      } else {
-        throw Exception('Failed to get referrals');
-      }
-    } catch (e) {
-      print('Get referrals error: $e');
-      return []; // Return empty list on error
     }
   }
 
@@ -2042,6 +1981,346 @@ class ApiService {
         'milestones': [],
         'total': 0,
       };
+    }
+  }
+
+  // Add these methods to your existing ApiService class in frontend/lib/services/api_service.dart
+
+// Referral endpoints
+  static Future<Map<String, dynamic>> createReferral(CreateReferralRequest request) async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/referrals'),
+        headers: headers,
+        body: jsonEncode(request.toJson()),
+      );
+
+      print('Create referral response status: ${response.statusCode}');
+      print('Create referral response body: ${response.body}');
+
+      if (response.statusCode == 201) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.post(
+          Uri.parse('$baseUrl/referrals'),
+          headers: newHeaders,
+          body: jsonEncode(request.toJson()),
+        );
+
+        if (retryResponse.statusCode == 201) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          final errorData = jsonDecode(retryResponse.body);
+          throw Exception(errorData['error'] ?? 'Failed to create referral');
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to create referral');
+      }
+    } catch (e) {
+      print('Create referral error: $e');
+      throw Exception('Failed to create referral: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getSentReferrals({
+    int page = 1,
+    int pageSize = 20,
+    String? status,
+    String? referralType,
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'page_size': pageSize.toString(),
+      };
+
+      if (status != null && status.isNotEmpty) {
+        queryParams['status'] = status;
+      }
+
+      if (referralType != null && referralType.isNotEmpty) {
+        queryParams['referral_type'] = referralType;
+      }
+
+      final uri = Uri.parse('$baseUrl/referrals/sent').replace(queryParameters: queryParams);
+      final headers = await getHeaders();
+      final response = await http.get(uri, headers: headers);
+
+      print('Get sent referrals response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.get(uri, headers: newHeaders);
+
+        if (retryResponse.statusCode == 200) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          throw Exception('Failed to get sent referrals');
+        }
+      } else {
+        throw Exception('Failed to get sent referrals');
+      }
+    } catch (e) {
+      print('Get sent referrals error: $e');
+      return {
+        'referrals': [],
+        'total': 0,
+        'page': page,
+        'page_size': pageSize,
+        'total_pages': 0,
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> getReceivedReferrals({
+    int page = 1,
+    int pageSize = 20,
+    String? status,
+    String? referralType,
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'page_size': pageSize.toString(),
+      };
+
+      if (status != null && status.isNotEmpty) {
+        queryParams['status'] = status;
+      }
+
+      if (referralType != null && referralType.isNotEmpty) {
+        queryParams['referral_type'] = referralType;
+      }
+
+      final uri = Uri.parse('$baseUrl/referrals/received').replace(queryParameters: queryParams);
+      final headers = await getHeaders();
+      final response = await http.get(uri, headers: headers);
+
+      print('Get received referrals response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.get(uri, headers: newHeaders);
+
+        if (retryResponse.statusCode == 200) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          throw Exception('Failed to get received referrals');
+        }
+      } else {
+        throw Exception('Failed to get received referrals');
+      }
+    } catch (e) {
+      print('Get received referrals error: $e');
+      return {
+        'referrals': [],
+        'total': 0,
+        'page': page,
+        'page_size': pageSize,
+        'total_pages': 0,
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> getReferral(String referralId) async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/referrals/$referralId'),
+        headers: headers,
+      );
+
+      print('Get referral response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.get(
+          Uri.parse('$baseUrl/referrals/$referralId'),
+          headers: newHeaders,
+        );
+
+        if (retryResponse.statusCode == 200) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          throw Exception('Referral not found');
+        }
+      } else {
+        throw Exception('Referral not found');
+      }
+    } catch (e) {
+      print('Get referral error: $e');
+      throw Exception('Failed to get referral: $e');
+    }
+  }
+
+  static Future<void> updateReferralStatus(String referralId, String status) async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.put(
+        Uri.parse('$baseUrl/referrals/$referralId/status'),
+        headers: headers,
+        body: jsonEncode({'status': status}),
+      );
+
+      print('Update referral status response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return;
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.put(
+          Uri.parse('$baseUrl/referrals/$referralId/status'),
+          headers: newHeaders,
+          body: jsonEncode({'status': status}),
+        );
+
+        if (retryResponse.statusCode != 200) {
+          final errorData = jsonDecode(retryResponse.body);
+          throw Exception(errorData['error'] ?? 'Failed to update referral status');
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to update referral status');
+      }
+    } catch (e) {
+      print('Update referral status error: $e');
+      throw Exception('Failed to update referral status: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> searchUsers({
+    required String query,
+    String? role,
+    int limit = 20,
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'q': query,
+        'limit': limit.toString(),
+      };
+
+      if (role != null && role.isNotEmpty) {
+        queryParams['role'] = role;
+      }
+
+      final uri = Uri.parse('$baseUrl/users/search').replace(queryParameters: queryParams);
+      final headers = await getHeaders();
+      final response = await http.get(uri, headers: headers);
+
+      print('Search users response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.get(uri, headers: newHeaders);
+
+        if (retryResponse.statusCode == 200) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          throw Exception('Failed to search users');
+        }
+      } else {
+        throw Exception('Failed to search users');
+      }
+    } catch (e) {
+      print('Search users error: $e');
+      return {
+        'users': [],
+        'total': 0,
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> getReferralStats() async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/referrals/stats'),
+        headers: headers,
+      );
+
+      print('Get referral stats response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.get(
+          Uri.parse('$baseUrl/referrals/stats'),
+          headers: newHeaders,
+        );
+
+        if (retryResponse.statusCode == 200) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          throw Exception('Failed to get referral stats');
+        }
+      } else {
+        throw Exception('Failed to get referral stats');
+      }
+    } catch (e) {
+      print('Get referral stats error: $e');
+      return {
+        'total_sent': 0,
+        'total_received': 0,
+        'pending_sent': 0,
+        'pending_received': 0,
+        'accepted': 0,
+        'declined': 0,
+        'viewed': 0,
+      };
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getItemReferrals(String itemId, String itemType) async {
+    try {
+      final uri = Uri.parse('$baseUrl/referrals/item').replace(queryParameters: {
+        'item_id': itemId,
+        'item_type': itemType,
+      });
+
+      final headers = await getHeaders();
+      final response = await http.get(uri, headers: headers);
+
+      print('Get item referrals response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return List<Map<String, dynamic>>.from(data['referrals'] ?? []);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.get(uri, headers: newHeaders);
+
+        if (retryResponse.statusCode == 200) {
+          final data = jsonDecode(retryResponse.body);
+          return List<Map<String, dynamic>>.from(data['referrals'] ?? []);
+        } else {
+          return [];
+        }
+      } else {
+        return [];
+      }
+    } catch (e) {
+      print('Get item referrals error: $e');
+      return [];
     }
   }
 }

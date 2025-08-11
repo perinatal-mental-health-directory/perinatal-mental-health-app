@@ -1,14 +1,15 @@
-// frontend/lib/main.dart
+// Updated frontend/lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:perinatal_app/features/profile/profile.dart';
 import 'package:perinatal_app/features/resources/resources_list.dart';
 import 'package:perinatal_app/features/support_groups/support_groups_list.dart';
 import 'package:provider/provider.dart';
-import 'features/dashboard/dashboard.dart';
+import 'features/dashboard/dashboard_router.dart'; // Updated import
 import 'features/journey/journey_provider.dart';
 import 'features/splash/splash_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/services/services_list.dart';
+import 'features/referrals/referral_provider.dart'; // New import
 import 'providers/auth_provider.dart';
 import 'features/services/services_provider.dart';
 import 'features/profile/profile_provider.dart';
@@ -35,6 +36,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ResourcesProvider()),
         ChangeNotifierProvider(create: (_) => SupportGroupsProvider()),
         ChangeNotifierProvider(create: (_) => JourneyProvider()),
+        ChangeNotifierProvider(create: (_) => ReferralProvider()),
       ],
       child: MaterialApp(
         title: 'Perinatal Mental Health App',
@@ -46,7 +48,7 @@ class MyApp extends StatelessWidget {
         home: const AppWrapper(),
         routes: {
           '/login': (context) => const LoginScreen(),
-          '/dashboard': (context) => const DashboardScreen(),
+          '/dashboard': (context) => const DashboardRouter(), // Updated route
           '/services': (context) => const FindServicesScreen(),
           '/resources': (context) => const ResourcesListScreen(),
           '/support-groups': (context) => const SupportGroupsListScreen(),
@@ -118,7 +120,7 @@ class _AppWrapperState extends State<AppWrapper> {
 
         // Navigate based on authentication status
         if (authProvider.isAuthenticated) {
-          return const DashboardScreen();
+          return const DashboardRouter(); // Updated to use router
         } else {
           return const LoginScreen();
         }
