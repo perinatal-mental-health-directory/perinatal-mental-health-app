@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/app_config.dart';
+import '../features/journey/journey_model.dart';
 
 class ApiService {
   static const String baseUrl = AppConfig.baseUrl;
@@ -1554,6 +1555,492 @@ class ApiService {
         'groups_by_category': {},
         'groups_by_platform': {},
         'popular_groups': [],
+      };
+    }
+  }
+
+  // Add these methods to your existing ApiService class in frontend/lib/services/api_service.dart
+
+  // Journey Entries endpoints
+  static Future<Map<String, dynamic>> createJourneyEntry(CreateJourneyEntryRequest request) async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/journey/entries'),
+        headers: headers,
+        body: jsonEncode(request.toJson()),
+      );
+
+      print('Create journey entry response status: ${response.statusCode}');
+
+      if (response.statusCode == 201) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.post(
+          Uri.parse('$baseUrl/journey/entries'),
+          headers: newHeaders,
+          body: jsonEncode(request.toJson()),
+        );
+
+        if (retryResponse.statusCode == 201) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          final errorData = jsonDecode(retryResponse.body);
+          throw Exception(errorData['error'] ?? 'Failed to create journey entry');
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to create journey entry');
+      }
+    } catch (e) {
+      print('Create journey entry error: $e');
+      throw Exception('Failed to create journey entry: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getTodaysJourneyEntry() async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/journey/entries/today'),
+        headers: headers,
+      );
+
+      print('Get today\'s entry response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.get(
+          Uri.parse('$baseUrl/journey/entries/today'),
+          headers: newHeaders,
+        );
+
+        if (retryResponse.statusCode == 200) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          throw Exception('No entry found for today');
+        }
+      } else {
+        throw Exception('No entry found for today');
+      }
+    } catch (e) {
+      print('Get today\'s entry error: $e');
+      throw Exception('No entry found for today');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getJourneyEntries({
+    int page = 1,
+    int pageSize = 30,
+    String? startDate,
+    String? endDate,
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'page_size': pageSize.toString(),
+      };
+
+      if (startDate != null && startDate.isNotEmpty) {
+        queryParams['start_date'] = startDate;
+      }
+
+      if (endDate != null && endDate.isNotEmpty) {
+        queryParams['end_date'] = endDate;
+      }
+
+      final uri = Uri.parse('$baseUrl/journey/entries').replace(queryParameters: queryParams);
+      final headers = await getHeaders();
+      final response = await http.get(uri, headers: headers);
+
+      print('Get journey entries response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.get(uri, headers: newHeaders);
+
+        if (retryResponse.statusCode == 200) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          throw Exception('Failed to get journey entries');
+        }
+      } else {
+        throw Exception('Failed to get journey entries');
+      }
+    } catch (e) {
+      print('Get journey entries error: $e');
+      return {
+        'entries': [],
+        'total': 0,
+        'page': page,
+        'page_size': pageSize,
+        'total_pages': 0,
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> getJourneyEntry(String entryId) async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/journey/entries/$entryId'),
+        headers: headers,
+      );
+
+      print('Get journey entry response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.get(
+          Uri.parse('$baseUrl/journey/entries/$entryId'),
+          headers: newHeaders,
+        );
+
+        if (retryResponse.statusCode == 200) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          throw Exception('Journey entry not found');
+        }
+      } else {
+        throw Exception('Journey entry not found');
+      }
+    } catch (e) {
+      print('Get journey entry error: $e');
+      throw Exception('Failed to get journey entry: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateJourneyEntry(String entryId, Map<String, dynamic> updates) async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.put(
+        Uri.parse('$baseUrl/journey/entries/$entryId'),
+        headers: headers,
+        body: jsonEncode(updates),
+      );
+
+      print('Update journey entry response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.put(
+          Uri.parse('$baseUrl/journey/entries/$entryId'),
+          headers: newHeaders,
+          body: jsonEncode(updates),
+        );
+
+        if (retryResponse.statusCode == 200) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          final errorData = jsonDecode(retryResponse.body);
+          throw Exception(errorData['error'] ?? 'Failed to update journey entry');
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to update journey entry');
+      }
+    } catch (e) {
+      print('Update journey entry error: $e');
+      throw Exception('Failed to update journey entry: $e');
+    }
+  }
+
+  static Future<void> deleteJourneyEntry(String entryId) async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/journey/entries/$entryId'),
+        headers: headers,
+      );
+
+      print('Delete journey entry response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return;
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.delete(
+          Uri.parse('$baseUrl/journey/entries/$entryId'),
+          headers: newHeaders,
+        );
+
+        if (retryResponse.statusCode != 200) {
+          final errorData = jsonDecode(retryResponse.body);
+          throw Exception(errorData['error'] ?? 'Failed to delete journey entry');
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to delete journey entry');
+      }
+    } catch (e) {
+      print('Delete journey entry error: $e');
+      throw Exception('Failed to delete journey entry: $e');
+    }
+  }
+
+  // Journey Goals endpoints
+  static Future<Map<String, dynamic>> createJourneyGoal(CreateJourneyGoalRequest request) async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/journey/goals'),
+        headers: headers,
+        body: jsonEncode(request.toJson()),
+      );
+
+      print('Create journey goal response status: ${response.statusCode}');
+
+      if (response.statusCode == 201) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.post(
+          Uri.parse('$baseUrl/journey/goals'),
+          headers: newHeaders,
+          body: jsonEncode(request.toJson()),
+        );
+
+        if (retryResponse.statusCode == 201) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          final errorData = jsonDecode(retryResponse.body);
+          throw Exception(errorData['error'] ?? 'Failed to create journey goal');
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to create journey goal');
+      }
+    } catch (e) {
+      print('Create journey goal error: $e');
+      throw Exception('Failed to create journey goal: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getJourneyGoals({String? status}) async {
+    try {
+      final queryParams = <String, String>{};
+      if (status != null && status.isNotEmpty) {
+        queryParams['status'] = status;
+      }
+
+      final uri = Uri.parse('$baseUrl/journey/goals').replace(queryParameters: queryParams);
+      final headers = await getHeaders();
+      final response = await http.get(uri, headers: headers);
+
+      print('Get journey goals response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.get(uri, headers: newHeaders);
+
+        if (retryResponse.statusCode == 200) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          throw Exception('Failed to get journey goals');
+        }
+      } else {
+        throw Exception('Failed to get journey goals');
+      }
+    } catch (e) {
+      print('Get journey goals error: $e');
+      return {
+        'goals': [],
+        'total': 0,
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateJourneyGoal(String goalId, Map<String, dynamic> updates) async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.put(
+        Uri.parse('$baseUrl/journey/goals/$goalId'),
+        headers: headers,
+        body: jsonEncode(updates),
+      );
+
+      print('Update journey goal response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.put(
+          Uri.parse('$baseUrl/journey/goals/$goalId'),
+          headers: newHeaders,
+          body: jsonEncode(updates),
+        );
+
+        if (retryResponse.statusCode == 200) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          final errorData = jsonDecode(retryResponse.body);
+          throw Exception(errorData['error'] ?? 'Failed to update journey goal');
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to update journey goal');
+      }
+    } catch (e) {
+      print('Update journey goal error: $e');
+      throw Exception('Failed to update journey goal: $e');
+    }
+  }
+
+  static Future<void> deleteJourneyGoal(String goalId) async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/journey/goals/$goalId'),
+        headers: headers,
+      );
+
+      print('Delete journey goal response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return;
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.delete(
+          Uri.parse('$baseUrl/journey/goals/$goalId'),
+          headers: newHeaders,
+        );
+
+        if (retryResponse.statusCode != 200) {
+          final errorData = jsonDecode(retryResponse.body);
+          throw Exception(errorData['error'] ?? 'Failed to delete journey goal');
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to delete journey goal');
+      }
+    } catch (e) {
+      print('Delete journey goal error: $e');
+      throw Exception('Failed to delete journey goal: $e');
+    }
+  }
+
+  // Journey Analytics endpoints
+  static Future<Map<String, dynamic>> getJourneyStats() async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/journey/stats'),
+        headers: headers,
+      );
+
+      print('Get journey stats response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.get(
+          Uri.parse('$baseUrl/journey/stats'),
+          headers: newHeaders,
+        );
+
+        if (retryResponse.statusCode == 200) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          throw Exception('Failed to get journey stats');
+        }
+      } else {
+        throw Exception('Failed to get journey stats');
+      }
+    } catch (e) {
+      print('Get journey stats error: $e');
+      throw Exception('Failed to get journey stats: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getJourneyInsights() async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/journey/insights'),
+        headers: headers,
+      );
+
+      print('Get journey insights response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.get(
+          Uri.parse('$baseUrl/journey/insights'),
+          headers: newHeaders,
+        );
+
+        if (retryResponse.statusCode == 200) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          throw Exception('Failed to get journey insights');
+        }
+      } else {
+        throw Exception('Failed to get journey insights');
+      }
+    } catch (e) {
+      print('Get journey insights error: $e');
+      throw Exception('Failed to get journey insights: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getJourneyMilestones({int limit = 10}) async {
+    try {
+      final uri = Uri.parse('$baseUrl/journey/milestones').replace(queryParameters: {
+        'limit': limit.toString(),
+      });
+
+      final headers = await getHeaders();
+      final response = await http.get(uri, headers: headers);
+
+      print('Get journey milestones response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await refreshToken();
+        final newHeaders = await getHeaders();
+        final retryResponse = await http.get(uri, headers: newHeaders);
+
+        if (retryResponse.statusCode == 200) {
+          return jsonDecode(retryResponse.body);
+        } else {
+          throw Exception('Failed to get journey milestones');
+        }
+      } else {
+        throw Exception('Failed to get journey milestones');
+      }
+    } catch (e) {
+      print('Get journey milestones error: $e');
+      return {
+        'milestones': [],
+        'total': 0,
       };
     }
   }

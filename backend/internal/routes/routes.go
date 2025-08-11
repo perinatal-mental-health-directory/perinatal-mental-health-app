@@ -8,6 +8,7 @@ import (
 	config "github.com/perinatal-mental-health-app/backend/internal/configs"
 	"github.com/perinatal-mental-health-app/backend/internal/feedback"
 	"github.com/perinatal-mental-health-app/backend/internal/health"
+	"github.com/perinatal-mental-health-app/backend/internal/journey"
 	custommiddleware "github.com/perinatal-mental-health-app/backend/internal/middleware"
 	"github.com/perinatal-mental-health-app/backend/internal/privacy"
 	"github.com/perinatal-mental-health-app/backend/internal/referrals"
@@ -214,4 +215,34 @@ func Register(e *echo.Echo, db *pgxpool.Pool, cfg *config.Config) {
 	adminFeedback.Use(custommiddleware.RoleMiddleware("nhs_staff", "professional"))
 	adminFeedback.GET("", feedbackHandler.ListFeedback)
 	adminFeedback.GET("/stats", feedbackHandler.GetFeedbackStats)
+
+	// Add this to your existing routes.go file after the other route definitions
+
+	// --- Journey ---
+	journeyStore := journey.NewStore(db)
+	journeyService := journey.NewService(journeyStore)
+	journeyHandler := journey.NewHandler(journeyService)
+
+	// Protected journey routes (require authentication)
+	journeyGroup := v1.Group("/journey")
+	journeyGroup.Use(custommiddleware.JWTMiddleware(jwtService))
+
+	// Journey Entries
+	journeyGroup.POST("/entries", journeyHandler.CreateJourneyEntry)
+	journeyGroup.GET("/entries", journeyHandler.ListJourneyEntries)
+	journeyGroup.GET("/entries/today", journeyHandler.GetTodaysEntry)
+	journeyGroup.GET("/entries/:id", journeyHandler.GetJourneyEntry)
+	journeyGroup.PUT("/entries/:id", journeyHandler.UpdateJourneyEntry)
+	journeyGroup.DELETE("/entries/:id", journeyHandler.DeleteJourneyEntry)
+
+	// Journey Goals
+	journeyGroup.POST("/goals", journeyHandler.CreateJourneyGoal)
+	journeyGroup.GET("/goals", journeyHandler.ListJourneyGoals)
+	journeyGroup.PUT("/goals/:id", journeyHandler.UpdateJourneyGoal)
+	journeyGroup.DELETE("/goals/:id", journeyHandler.DeleteJourneyGoal)
+
+	// Journey Analytics
+	journeyGroup.GET("/stats", journeyHandler.GetJourneyStats)
+	journeyGroup.GET("/insights", journeyHandler.GetJourneyInsights)
+	journeyGroup.GET("/milestones", journeyHandler.ListJourneyMilestones)
 }
