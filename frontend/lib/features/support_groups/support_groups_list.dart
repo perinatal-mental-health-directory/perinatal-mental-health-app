@@ -1,9 +1,11 @@
-// frontend/lib/features/support_groups/support_groups_list.dart
+// Updated frontend/lib/features/support_groups/support_groups_list.dart
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../main.dart';
 import '../profile/profile.dart';
+import '../referrals/referral_tag_widget.dart'; // Add this import
+import '../referrals/referral_provider.dart'; // Add this import
 import 'support_groups_provider.dart';
 import 'support_groups_model.dart';
 import 'support_group_detail.dart';
@@ -37,6 +39,10 @@ class _SupportGroupsListScreenState extends State<SupportGroupsListScreen> with 
       final supportGroupsProvider = Provider.of<SupportGroupsProvider>(context, listen: false);
       supportGroupsProvider.loadSupportGroups(refresh: true);
       supportGroupsProvider.loadUserGroups();
+
+      // Load user's received referrals to show NHS tags
+      final referralProvider = Provider.of<ReferralProvider>(context, listen: false);
+      referralProvider.loadReceivedReferrals(refresh: true);
     });
 
     // Add scroll listener for pagination
@@ -338,7 +344,7 @@ class _SupportGroupsListScreenState extends State<SupportGroupsListScreen> with 
 
                       final group = supportGroupsProvider.supportGroups[index];
                       final isUserMember = supportGroupsProvider.isUserMemberOfGroup(group.id);
-                      return _buildSupportGroupTile(group, isUserMember);
+                      return _buildSupportGroupTileWithReferral(group, isUserMember);
                     },
                   ),
                 );
@@ -392,6 +398,22 @@ class _SupportGroupsListScreenState extends State<SupportGroupsListScreen> with 
       side: BorderSide(
         color: isSelected ? kActionGreen : Colors.grey[300]!,
       ),
+    );
+  }
+
+  // Updated method with referral integration
+  Widget _buildSupportGroupTileWithReferral(SupportGroupModel group, bool isUserMember) {
+    return Column(
+      children: [
+        // NHS Referral Tag (if exists)
+        ReferralTagWidget(
+          itemId: group.id,
+          itemType: 'support_group',
+          showDetails: true,
+        ),
+        // Original Support Group Tile
+        _buildSupportGroupTile(group, isUserMember),
+      ],
     );
   }
 
@@ -450,6 +472,14 @@ class _SupportGroupsListScreenState extends State<SupportGroupsListScreen> with 
                               ),
                             ),
                           ),
+                          // Compact NHS Referral Tag in header
+                          ReferralTagWidget(
+                            itemId: group.id,
+                            itemType: 'support_group',
+                            showDetails: false,
+                            compact: true,
+                          ),
+                          const SizedBox(width: 8),
                           if (isUserMember)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

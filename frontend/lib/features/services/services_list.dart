@@ -1,9 +1,12 @@
+// Updated frontend/lib/features/services/services_list.dart
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../main.dart';
 import '../profile/profile.dart';
 import '../support_groups/support_groups_list.dart';
+import '../referrals/referral_tag_widget.dart'; // Add this import
+import '../referrals/referral_provider.dart'; // Add this import
 import 'services_provider.dart';
 import 'services_model.dart';
 import 'service_detail.dart';
@@ -34,6 +37,10 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final servicesProvider = Provider.of<ServicesProvider>(context, listen: false);
       servicesProvider.loadServices(refresh: true);
+
+      // Load user's received referrals to show NHS tags
+      final referralProvider = Provider.of<ReferralProvider>(context, listen: false);
+      referralProvider.loadReceivedReferrals(refresh: true);
     });
 
     // Add scroll listener for pagination
@@ -298,7 +305,7 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
                       }
 
                       final service = servicesProvider.services[index];
-                      return _buildServiceTile(service);
+                      return _buildServiceTileWithReferral(service);
                     },
                   ),
                 );
@@ -330,6 +337,22 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
       side: BorderSide(
         color: isSelected ? kPrimaryBlue : Colors.grey[300]!,
       ),
+    );
+  }
+
+  // Updated method with referral integration
+  Widget _buildServiceTileWithReferral(ServiceModel service) {
+    return Column(
+      children: [
+        // NHS Referral Tag (if exists)
+        ReferralTagWidget(
+          itemId: service.id,
+          itemType: 'service',
+          showDetails: true,
+        ),
+        // Original Service Tile
+        _buildServiceTile(service),
+      ],
     );
   }
 
@@ -377,12 +400,25 @@ class _FindServicesScreenState extends State<FindServicesScreen> with AutomaticK
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        service.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              service.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                          // Compact NHS Referral Tag in header
+                          ReferralTagWidget(
+                            itemId: service.id,
+                            itemType: 'service',
+                            showDetails: false,
+                            compact: true,
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 2),
                       Text(
