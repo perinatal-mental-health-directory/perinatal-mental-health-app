@@ -213,3 +213,77 @@ CREATE TRIGGER update_data_requests_updated_at
     BEFORE UPDATE ON data_requests
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+
+-- Create journey_entries table
+CREATE TABLE journey_entries (
+                                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                                 user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                                 entry_date DATE NOT NULL DEFAULT CURRENT_DATE,
+                                 mood_rating INTEGER NOT NULL CHECK (mood_rating >= 1 AND mood_rating <= 5),
+                                 anxiety_level INTEGER CHECK (anxiety_level >= 1 AND anxiety_level <= 5),
+                                 sleep_quality INTEGER CHECK (sleep_quality >= 1 AND sleep_quality <= 5),
+                                 energy_level INTEGER CHECK (energy_level >= 1 AND energy_level <= 5),
+                                 notes TEXT,
+                                 activities TEXT[], -- Array of activities done that day
+                                 symptoms TEXT[], -- Array of symptoms experienced
+                                 gratitude_note TEXT,
+                                 is_private BOOLEAN DEFAULT true,
+                                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+
+    -- Ensure one entry per user per day
+                                 UNIQUE(user_id, entry_date)
+);
+
+-- Create journey_goals table for tracking user goals
+CREATE TABLE journey_goals (
+                               id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                               user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                               title VARCHAR(255) NOT NULL,
+                               description TEXT,
+                               target_date DATE,
+                               goal_type VARCHAR(50) NOT NULL CHECK (goal_type IN ('mood', 'sleep', 'exercise', 'mindfulness', 'social', 'custom')),
+                               status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed', 'paused', 'cancelled')),
+                               is_completed BOOLEAN DEFAULT false,
+                               completed_at TIMESTAMP WITH TIME ZONE,
+                               created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                               updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create journey_milestones table for tracking achievements
+CREATE TABLE journey_milestones (
+                                    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                                    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                                    milestone_type VARCHAR(50) NOT NULL, -- e.g., 'first_entry', 'week_streak', 'month_complete'
+                                    title VARCHAR(255) NOT NULL,
+                                    description TEXT,
+                                    achieved_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for better performance
+CREATE INDEX idx_journey_entries_user_id ON journey_entries(user_id);
+CREATE INDEX idx_journey_entries_date ON journey_entries(entry_date);
+CREATE INDEX idx_journey_entries_user_date ON journey_entries(user_id, entry_date);
+CREATE INDEX idx_journey_entries_mood ON journey_entries(mood_rating);
+CREATE INDEX idx_journey_entries_created_at ON journey_entries(created_at);
+
+CREATE INDEX idx_journey_goals_user_id ON journey_goals(user_id);
+CREATE INDEX idx_journey_goals_status ON journey_goals(status);
+CREATE INDEX idx_journey_goals_type ON journey_goals(goal_type);
+CREATE INDEX idx_journey_goals_target_date ON journey_goals(target_date);
+
+CREATE INDEX idx_journey_milestones_user_id ON journey_milestones(user_id);
+CREATE INDEX idx_journey_milestones_type ON journey_milestones(milestone_type);
+CREATE INDEX idx_journey_milestones_achieved_at ON journey_milestones(achieved_at);
+
+-- Create triggers to automatically update updated_at
+CREATE TRIGGER update_journey_entries_updated_at
+    BEFORE UPDATE ON journey_entries
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_journey_goals_updated_at
+    BEFORE UPDATE ON journey_goals
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
