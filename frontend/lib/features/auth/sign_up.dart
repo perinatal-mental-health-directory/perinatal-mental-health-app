@@ -555,7 +555,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
           const Center(
             child: Text(
-              'Help us personalize your experience\n(All fields are optional)',
+              'Help us personalize your experience',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
@@ -577,7 +577,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             validator: _validatePhone,
             keyboardType: TextInputType.phone,
             decoration: InputDecoration(
-              hintText: 'Enter your phone number (optional)',
+              hintText: 'Enter your phone number',
               hintStyle: TextStyle(color: Colors.grey.shade500),
               prefixIcon: const Icon(Icons.phone_outlined),
               border: OutlineInputBorder(
@@ -609,7 +609,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   Expanded(
                     child: Text(
                       _selectedDateOfBirth == null
-                          ? 'Select your date of birth (optional)'
+                          ? 'Select your date of birth'
                           : '${_selectedDateOfBirth!.day}/${_selectedDateOfBirth!.month}/${_selectedDateOfBirth!.year}',
                       style: TextStyle(
                         color: _selectedDateOfBirth == null
@@ -643,7 +643,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             controller: _addressController,
             maxLines: 3,
             decoration: InputDecoration(
-              hintText: 'Enter your address (optional)',
+              hintText: 'Enter your address',
               hintStyle: TextStyle(color: Colors.grey.shade500),
               prefixIcon: const Icon(Icons.location_on_outlined),
               border: OutlineInputBorder(
@@ -680,7 +680,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFFFFC107),
-                              decoration: TextDecoration.underline,
                             ),
                           ),
                         ),

@@ -24,9 +24,8 @@ func NewJWTService(secretKey string) *JWTService {
 	}
 }
 
-// GenerateToken generates a new JWT token for the user
 func (j *JWTService) GenerateToken(userID, email, role string) (string, time.Time, error) {
-	expirationTime := time.Now().Add(24 * time.Hour)
+	expirationTime := time.Now().Add(90 * 24 * time.Hour) // 90 days like NHS!
 
 	claims := &Claims{
 		UserID: userID,
@@ -36,6 +35,7 @@ func (j *JWTService) GenerateToken(userID, email, role string) (string, time.Tim
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
+			Issuer:    "perinatal-health-app",
 		},
 	}
 
@@ -48,9 +48,8 @@ func (j *JWTService) GenerateToken(userID, email, role string) (string, time.Tim
 	return tokenString, expirationTime, nil
 }
 
-// GenerateRefreshToken generates a refresh token (valid for 7 days)
 func (j *JWTService) GenerateRefreshToken(userID string) (string, time.Time, error) {
-	expirationTime := time.Now().Add(7 * 24 * time.Hour)
+	expirationTime := time.Now().Add(180 * 24 * time.Hour) // 6 months
 
 	claims := &Claims{
 		UserID: userID,
@@ -58,6 +57,7 @@ func (j *JWTService) GenerateRefreshToken(userID string) (string, time.Time, err
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
+			Issuer:    "perinatal-health-app-refresh",
 		},
 	}
 
@@ -70,7 +70,6 @@ func (j *JWTService) GenerateRefreshToken(userID string) (string, time.Time, err
 	return tokenString, expirationTime, nil
 }
 
-// ValidateToken validates a JWT token and returns the claims
 func (j *JWTService) ValidateToken(tokenString string) (*Claims, error) {
 	claims := &Claims{}
 

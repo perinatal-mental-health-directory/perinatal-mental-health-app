@@ -40,13 +40,11 @@ func (s *service) Login(ctx context.Context, req *LoginRequest) (*AuthResponse, 
 		return nil, fmt.Errorf("invalid credentials")
 	}
 
-	// Generate JWT token
 	token, expiresAt, err := s.jwtService.GenerateToken(fetchedUser.ID, fetchedUser.Email, string(fetchedUser.Role))
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token")
 	}
 
-	// Generate refresh token
 	refreshToken, _, err := s.jwtService.GenerateRefreshToken(fetchedUser.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate refresh token")
@@ -55,7 +53,6 @@ func (s *service) Login(ctx context.Context, req *LoginRequest) (*AuthResponse, 
 	// Update last login time
 	err = s.store.UpdateLastLogin(ctx, fetchedUser.ID)
 	if err != nil {
-		// Log error but don't fail the login
 		fmt.Printf("Failed to update last login: %v\n", err)
 	}
 
