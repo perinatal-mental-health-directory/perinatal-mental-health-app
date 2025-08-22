@@ -29,9 +29,25 @@ class AuthProvider with ChangeNotifier {
       if (token != null) {
         // Try to get user profile to validate token
         final userProfile = await ApiService.getCurrentUserProfile();
-        _user = userProfile;
+
+        // Extract the user data from the profile response
+        // The profile response has structure: { user: {...}, phone_number: ..., etc }
+        // We need just the user part to match what login returns
+        if (userProfile['user'] != null) {
+          _user = userProfile['user'];  // Extract just the user object
+        } else {
+          // Fallback: if no nested user object, use the profile directly
+          // but extract the main user fields
+          _user = {
+            'id': userProfile['user_id'] ?? userProfile['id'],
+            'email': userProfile['email'],
+            'full_name': userProfile['full_name'],
+            'role': userProfile['role'],
+          };
+        }
+
         _isAuthenticated = true;
-        print('User authenticated: ${_user?['email']}');
+        print('User authenticated: ${_user?['email']} (${_user?['full_name']})');
       }
     } catch (e) {
       print('Auth check failed: $e');

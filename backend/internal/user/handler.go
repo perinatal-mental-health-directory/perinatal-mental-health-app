@@ -110,12 +110,6 @@ func (h *handler) UpdateUser(c echo.Context) error {
 		})
 	}
 
-	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": err.Error(),
-		})
-	}
-
 	user, err := h.service.UpdateUser(c.Request().Context(), userID, &req)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{
@@ -139,12 +133,6 @@ func (h *handler) UpdateCurrentUser(c echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "Invalid request format",
-		})
-	}
-
-	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": err.Error(),
 		})
 	}
 
